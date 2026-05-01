@@ -13,7 +13,15 @@
       "Bash(git commit *)",
       "Bash(git rebase *)",
       "Bash(git restore *)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(git fetch *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__Claude_in_Chrome__tabs_create_mcp"
     ]
   }
 }
