@@ -19,9 +19,8 @@
       })
     });
     const json = await response.json();
-    const text = json?.content?.[0]?.text || json?.error?.message || "Sin respuesta";
-    res.status(200).json({ text });
+    res.status(200).json(json);
   } catch (e) {
-    res.status(500).json({ text: "Error: " + e.message });
+    res.status(500).json({ error: e.message });
   }
 }
