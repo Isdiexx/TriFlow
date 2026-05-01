@@ -9,7 +9,7 @@
   console.log("Messages count:", req.body.messages?.length);
   try {
     const payload = {
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-3-5-sonnet-latest",
       max_tokens: 500,
       system: req.body.system || "",
       messages: req.body.messages || []
