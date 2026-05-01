@@ -11,7 +11,7 @@ const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loadin
 const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[]});
 const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);
 const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
-const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);
+const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");
 const chatBottom=useRef(null);
 const T=dark?DARK:LIGHT;
 useEffect(()=>{if(window.location.search.includes("dev")){
@@ -53,6 +53,22 @@ const updateAgua=async(v)=>{setAgua(v);await supabase.from("agua_diaria").upsert
 const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
 const eliminarProducto=async(id)=>{await supabase.from("stock").delete().eq("id",id);setStock(p=>p.filter(s=>s.id!==id));};
 const toggleSesion=async(id,completada)=>{await supabase.from("sesiones").update({completada:!completada}).eq("id",id);setSesiones(p=>p.map(s=>s.id===id?{...s,completada:!completada}:s));};
+const generarMenu=async()=>{
+  if(menuLoading)return;
+  setMenuLoading(true);setMenuError("");
+  try{
+    const res=await fetch("/api/generate-menu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile,stock})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);
+    if(!Array.isArray(data.menu)||!data.menu.length)throw new Error("Menú vacío");
+    await supabase.from("menu_semanal").delete().eq("user_id",user.id);
+    const rows=data.menu.map(m=>({user_id:user.id,dia:m.dia,desayuno:m.desayuno||"",almuerzo:m.almuerzo||"",snack:m.snack||"",cena:m.cena||""}));
+    const{data:inserted,error}=await supabase.from("menu_semanal").insert(rows).select();
+    if(error)throw error;
+    setMenu(inserted||rows);
+  }catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}
+  setMenuLoading(false);
+};
 const sendChat=async()=>{
   if(!chatInput.trim()||chatLoading)return;
   const txt=chatInput.trim();setChatInput("");
@@ -111,13 +127,17 @@ return(<div style={{background:T.shell,minHeight:"100vh",display:"flex",alignIte
 </div>
 </div>)}
 {tab==="habito"&&(<div style={{padding:"20px 18px"}}>
-<div style={{fontFamily:"Playfair Display,serif",fontSize:22,fontWeight:600,color:T.charcoal,marginBottom:4}}>El Hábito</div>
-<div style={{fontSize:13,color:T.textSub,marginBottom:18}}>Tu menú semanal personalizado</div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+<div><div style={{fontFamily:"Playfair Display,serif",fontSize:22,fontWeight:600,color:T.charcoal}}>El Hábito</div>
+<div style={{fontSize:13,color:T.textSub,marginBottom:18}}>Tu menú semanal personalizado</div></div>
+{menu.length>0&&<button onClick={generarMenu} disabled={menuLoading} style={{padding:"7px 12px",borderRadius:99,background:menuLoading?T.muted:T.sage,border:"none",color:"#fff",fontSize:11,cursor:menuLoading?"default":"pointer",fontFamily:"DM Sans,sans-serif",whiteSpace:"nowrap"}}>{menuLoading?"Generando...":"↻ Regenerar"}</button>}
+</div>
+{menuError&&<div style={{background:T.clay+"22",border:"1px solid "+T.clay,borderRadius:12,padding:"10px 12px",marginBottom:14,fontSize:12,color:T.clay}}>{menuError}</div>}
 {menu.length===0?(<div style={{background:T.card,borderRadius:18,padding:24,border:"1px solid "+T.border,textAlign:"center"}}>
 <div style={{fontSize:32,marginBottom:12}}>🥗</div>
 <div style={{fontFamily:"Playfair Display,serif",fontSize:18,color:T.charcoal,marginBottom:8}}>Sin menú aún</div>
-<div style={{fontSize:13,color:T.textMid,marginBottom:16}}>Pídele a tu asistente IA que genere tu menú personalizado.</div>
-<button onClick={()=>setTab("asistente")} style={{padding:"10px 20px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:13,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>Ir al asistente ✦</button>
+<div style={{fontSize:13,color:T.textMid,marginBottom:16}}>Genera tu menú personalizado según tu objetivo, restricciones y despensa.</div>
+<button onClick={generarMenu} disabled={menuLoading} style={{padding:"10px 20px",borderRadius:99,background:menuLoading?T.muted:T.sage,border:"none",color:"#fff",fontSize:13,cursor:menuLoading?"default":"pointer",fontFamily:"DM Sans,sans-serif"}}>{menuLoading?"Generando menú...":"Generar menú semanal ✦"}</button>
 </div>):menu.map((m,i)=>(<div key={i} style={{background:T.card,borderRadius:18,padding:"14px 16px",border:"1px solid "+T.border,marginBottom:10}}>
 <div style={{fontSize:12,color:T.textSub,marginBottom:6,fontWeight:600}}>{m.dia?.toUpperCase()}</div>
 {m.desayuno&&<div style={{fontSize:13,color:T.textMid,marginBottom:3}}>🌅 {m.desayuno}</div>}
