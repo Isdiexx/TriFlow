@@ -1,0 +1,50 @@
+import { useState } from "react";
+
+const LIGHT = {
+  bg:"#F7F5F0", surface:"#FDFCFA", card:"#FFFFFF", border:"#EAE4D8",
+  sage:"#7C9E87", charcoal:"#2C2C2C", text:"#2C2C2C", textMid:"#6B6458", textSub:"#9C9284", muted:"#B8B0A0",
+  shell:"#E8E4DC",
+};
+
+const DARK = {
+  bg:"#161C18", surface:"#1C2420", card:"#212B25", border:"#2A3830",
+  sage:"#7EC494", charcoal:"#EAE6DE", text:"#EAE6DE", textMid:"#A8A090", textSub:"#6E6860", muted:"#4A4840",
+  shell:"#0E1210",
+};
+
+export default function App() {
+  const [dark, setDark] = useState(false);
+  const T = dark ? DARK : LIGHT;
+
+  return (
+    <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans', system-ui",transition:"background .4s",padding:"20px"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');*{margin:0;padding:0;box-sizing:border-box;}`}</style>
+      <div style={{width:"100%",maxWidth:500,textAlign:"center"}}>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:40,fontWeight:600,marginBottom:50}}>
+          Tri<span style={{color:T.sage}}>Flow</span>
+        </div>
+        
+        <div style={{fontSize:80,marginBottom:30}}>🚀</div>
+        
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,color:T.charcoal,marginBottom:20}}>Organiza tu cambio</div>
+        
+        <div style={{fontSize:16,color:T.textMid,lineHeight:1.8,marginBottom:40}}>
+          La app que revoluciona cómo comes, entrenas y te transformas.<br/><br/>
+          <strong>Disponible en:</strong><br/>
+          La Despensa · El Hábito · La Transformación
+        </div>
+
+        <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:40}}>
+          <button onClick={()=>setDark(!dark)} style={{padding:"12px 28px",borderRadius:99,background:dark?T.sage:T.charcoal,border:"none",color:dark?"#000":"#fff",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:600}}>
+            {dark?"☀️ Claro":"🌙 Oscuro"}
+          </button>
+          <button style={{padding:"12px 28px",borderRadius:99,background:T.sage,border:"none",color:"#fff",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:600}}>
+            Próximamente
+          </button>
+        </div>
+
+        <div style={{fontSize:13,color:T.muted}}>triflow.cl — Mayo 2026</div>
+      </div>
+    </div>
+  );
+}
