@@ -11,7 +11,7 @@ const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loadin
 const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[]});
 const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);
 const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
-const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");
+const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");const[listaCompra,setListaCompra]=useState([]);
 const chatBottom=useRef(null);
 const T=dark?DARK:LIGHT;
 useEffect(()=>{if(window.location.search.includes("dev")){
@@ -66,8 +66,16 @@ const generarMenu=async()=>{
     const{data:inserted,error}=await supabase.from("menu_semanal").insert(rows).select();
     if(error)throw error;
     setMenu(inserted||rows);
+    setListaCompra(Array.isArray(data.lista_compra)?data.lista_compra:[]);
   }catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}
   setMenuLoading(false);
+};
+const agregarSugerencia=async(item,idx)=>{
+  const payload={user_id:user.id,nombre:item.nombre,cantidad:parseFloat(item.cantidad)||0,unidad:item.unidad||"g"};
+  const{data,error}=await supabase.from("stock").insert(payload).select().single();
+  if(error){setMenuError(error.message);return;}
+  setStock(p=>[...p,data]);
+  setListaCompra(p=>p.filter((_,i)=>i!==idx));
 };
 const sendChat=async()=>{
   if(!chatInput.trim()||chatLoading)return;
@@ -145,6 +153,17 @@ return(<div style={{background:T.shell,minHeight:"100vh",display:"flex",alignIte
 {m.snack&&<div style={{fontSize:13,color:T.textMid,marginBottom:3}}>🍎 {m.snack}</div>}
 {m.cena&&<div style={{fontSize:13,color:T.textMid}}>🌙 {m.cena}</div>}
 </div>))}
+{listaCompra.length>0&&(<div style={{marginTop:18,background:T.sand+"14",border:"1px solid "+T.sand+"44",borderRadius:18,padding:"14px 16px"}}>
+<div style={{fontSize:13,fontWeight:600,color:T.sand,marginBottom:4,display:"flex",alignItems:"center",gap:6}}>🛒 Sugerencias para tu despensa</div>
+<div style={{fontSize:11,color:T.textSub,marginBottom:12}}>Productos faltantes o insuficientes para este menú</div>
+{listaCompra.map((item,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:i>0?"1px solid "+T.border:"none",gap:10}}>
+<div style={{flex:1,minWidth:0}}>
+<div style={{fontSize:13,color:T.charcoal,fontWeight:500}}>{item.nombre} <span style={{color:T.textSub,fontWeight:400}}>· {item.cantidad}{item.unidad}</span></div>
+{item.motivo&&<div style={{fontSize:11,color:T.textSub,marginTop:2}}>{item.motivo}</div>}
+</div>
+<button onClick={()=>agregarSugerencia(item,i)} style={{padding:"6px 12px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"DM Sans,sans-serif",whiteSpace:"nowrap",flexShrink:0}}>+ Agregar</button>
+</div>))}
+</div>)}
 </div>)}
 {tab==="despensa"&&(<div style={{padding:"20px 18px"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
