@@ -66,8 +66,11 @@ Despensa actual: ${stockInfo||"vacía"}.
 Responde en español, cálido y conciso (máx 200 palabras). Usa el contexto del perfil y despensa para respuestas personalizadas.`;
     const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-opus-4-1",max_tokens:1000,system,messages:msgs.filter(m=>m.role!=="assistant"||msgs.indexOf(m)>0).slice(-10).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")})).concat([{role:"user",content:txt}])})});
     const data=await res.json();
-    setMsgs(p=>[...p,{role:"assistant",text:data?.content?.[0]?.text || "Sin respuesta."}]);
-  }catch(e){setMsgs(p=>[...p,{role:"assistant",text:"Error de conexión. Intenta de nuevo."}]);}
+    if(!res.ok){throw new Error(data?.error||`Error ${res.status}`);}
+    const responseText=data?.content?.[0]?.text;
+    if(!responseText){console.error("Respuesta vacía:",data);throw new Error("Respuesta vacía del servidor");}
+    setMsgs(p=>[...p,{role:"assistant",text:responseText}]);
+  }catch(e){console.error("Chat error:",e);setMsgs(p=>[...p,{role:"assistant",text:`Error: ${e.message||"No se pudo obtener respuesta"}. Intenta de nuevo.`}]);}
   setChatLoading(false);
 };
 const inp=(x={})=>({width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid "+T.border,background:T.card,fontSize:14,marginBottom:12,color:T.charcoal,outline:"none",fontFamily:"DM Sans,sans-serif",...x});
