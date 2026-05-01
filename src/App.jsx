@@ -6,7 +6,7 @@ const DARK={bg:"#161C18",surface:"#1C2420",card:"#212B25",border:"#2A3830",sage:
 const TABS=[{id:"inicio",label:"Inicio",icon:"◈"},{id:"habito",label:"Hábito",icon:"▦"},{id:"despensa",label:"Despensa",icon:"⬡"},{id:"entrena",label:"Entrena",icon:"◉"},{id:"asistente",label:"Asistente",icon:"✦"}];
 const CSS=`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap');*{margin:0;padding:0;box-sizing:border-box}`;
 export default function App(){
-const[dark,setDark]=useState(false);const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);const[screen,setScreen]=useState("auth");const[tab,setTab]=useState("inicio");
+const[dark,setDark]=useState(false);const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);const[screen,setScreen]=useState(window.location.search.includes("dev")?'app':'auth');const[tab,setTab]=useState("inicio");
 const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loading,setLoading]=useState(false);const[error,setError]=useState("");const[modo,setModo]=useState("login");
 const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[]});
 const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);
@@ -14,12 +14,27 @@ const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"
 const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);
 const chatBottom=useRef(null);
 const T=dark?DARK:LIGHT;
-useEffect(()=>{supabase.auth.getSession().then(async({data:{session}})=>{if(session?.user){setUser(session.user);await loadAll(session.user.id);}});supabase.auth.onAuthStateChange(async(_,session)=>{if(session?.user){setUser(session.user);await loadAll(session.user.id);}else{setUser(null);setProfile(null);setScreen("auth");}});},[]);
+useEffect(()=>{if(window.location.search.includes("dev")){
+  const devUser={id:"dev-user-123",email:"dev@test.com"};
+  setUser(devUser);
+  loadAll(devUser.id);
+}else{
+  supabase.auth.getSession().then(async({data:{session}})=>{if(session?.user){setUser(session.user);await loadAll(session.user.id);}});
+  supabase.auth.onAuthStateChange(async(_,session)=>{if(session?.user){setUser(session.user);await loadAll(session.user.id);}else{setUser(null);setProfile(null);setScreen("auth");}});
+}},[]);
 useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 const loadAll=async(uid)=>{
-  const{data:p}=await supabase.from("profiles").select("*").eq("id",uid).single();
-  if(!p?.nombre){setScreen("onboarding");return;}
-  setProfile(p);
+  let p=null;
+  if(window.location.search.includes("dev")){
+    p={id:uid,nombre:"Diego",apellido:"Test",peso_actual:85,peso_meta:75,objetivo:"bajar_peso",restricciones:["Sin lactosa"]};
+    setProfile(p);
+    setUser({id:uid,email:"test@triflow.com"});
+  }else{
+    const{data:profile}=await supabase.from("profiles").select("*").eq("id",uid).single();
+    p=profile;
+    if(!p?.nombre){setScreen("onboarding");return;}
+    setProfile(p);
+  }
   const{data:a}=await supabase.from("agua_diaria").select("*").eq("user_id",uid).eq("fecha",new Date().toISOString().split("T")[0]).single();
   setAgua(a?.vasos||0);
   const{data:s}=await supabase.from("stock").select("*").eq("user_id",uid).order("created_at");
