@@ -1,16 +1,78 @@
-# React + Vite
+# TriFlow - Asistente IA de Salud y Fitness
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Una aplicación personal de fitness con asistente IA integrado que te ayuda a alcanzar tus objetivos de salud.
 
-Currently, two official plugins are available:
+## Características
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 🎯 Seguimiento de peso y progreso
+- 💧 Control de consumo de agua
+- 🏋️ Plan de entrenamiento personalizado
+- 📦 Gestión de despensa
+- 🍽️ Menú semanal personalizado
+- ✦ Asistente IA con Claude 3 Opus
 
-## React Compiler
+## Stack Tecnológico
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React 19 + Vite
+- **Backend**: Node.js + Express (Vercel Serverless)
+- **Base de Datos**: Supabase
+- **IA**: Anthropic Claude 3 Opus
+- **Hosting**: Vercel
 
-## Expanding the ESLint configuration
+## Instalación Local
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Requisitos
+- Node.js 18+
+- npm o yarn
+
+### Setup
+
+\`\`\`bash
+# Clonar repositorio
+git clone https://github.com/tu-usuario/triflow.git
+cd triflow
+
+# Instalar dependencias
+npm install
+
+# Configurar API key
+PowerShell .\setup-api-key.ps1
+
+# Ejecutar en desarrollo
+npm run dev
+\`\`\`
+
+## Deployment en Vercel
+
+### 1. Conectar repositorio
+
+\`\`\`bash
+npm install -g vercel
+vercel login
+vercel
+\`\`\`
+
+### 2. Configurar variables de entorno en Vercel
+
+- Vercel Dashboard → Project → Settings → Environment Variables
+- Agrega: \`ANTHROPIC_KEY\` con tu API key
+
+### 3. Configurar dominio
+
+- Vercel Settings → Domains
+- Agrega tu dominio (ej: triflow.cl)
+
+## Endpoints API
+
+- \`POST /api/chat\` - Chat con asistente IA
+
+## Seguridad
+
+⚠️ **IMPORTANTE:**
+- **Nunca** commits el archivo \`.env\` con tu API key
+- Usa variables de entorno en Vercel
+- El archivo \`.gitignore\` protege archivos sensibles
+
+## Versión
+
+✓ Producción lista para desplegar

@@ -64,7 +64,7 @@ const sendChat=async()=>{
 Perfil: objetivo ${profile?.objetivo?.replace(/_/g," ")}, peso actual ${profile?.peso_actual}kg, meta ${profile?.peso_meta}kg, restricciones: ${profile?.restricciones?.join(", ")||"ninguna"}.
 Despensa actual: ${stockInfo||"vacía"}.
 Responde en español, cálido y conciso (máx 200 palabras). Usa el contexto del perfil y despensa para respuestas personalizadas.`;
-    const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system,messages:msgs.filter(m=>m.role!=="assistant"||msgs.indexOf(m)>0).slice(-10).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")})).concat([{role:"user",content:txt}])})});
+    const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-opus-4-1",max_tokens:1000,system,messages:msgs.filter(m=>m.role!=="assistant"||msgs.indexOf(m)>0).slice(-10).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")})).concat([{role:"user",content:txt}])})});
     const data=await res.json();
     setMsgs(p=>[...p,{role:"assistant",text:data?.content?.[0]?.text || "Sin respuesta."}]);
   }catch(e){setMsgs(p=>[...p,{role:"assistant",text:"Error de conexión. Intenta de nuevo."}]);}

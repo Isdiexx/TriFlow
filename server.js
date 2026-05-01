@@ -28,7 +28,7 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     const payload = {
-      model: req.body.model || 'claude-sonnet-4-20250514',
+      model: req.body.model || 'claude-opus-4-1',
       max_tokens: req.body.max_tokens || 1000,
       system: req.body.system || '',
       messages: req.body.messages || []
