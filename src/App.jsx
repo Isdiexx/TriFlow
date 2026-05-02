@@ -71,7 +71,7 @@ export default function App(){
   useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
   useEffect(()=>{
     if(showScanner&&!scannedProduct){
-      try{const scanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:250,height:250}});scannerRef.current=scanner;scanner.render((r)=>{handleScanSuccess(r);scanner.clear()},()=>{});}
+      try{const scanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:250,height:250},videoConstraints:{facingMode:{exact:"environment"}},showTorchButtonIfSupported:false});scannerRef.current=scanner;scanner.render((r)=>{handleScanSuccess(r);scanner.clear()},()=>{});}
       catch(e){console.error("Scanner error:",e);}
     }
     return()=>{if(scannerRef.current){try{scannerRef.current.clear();}catch(e){}}};
