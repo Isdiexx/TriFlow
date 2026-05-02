@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { Html5QrcodeScanner } from "html5-qrcode";
 const supabase = createClient("https://uiktwbtwzotqduzwtjcb.supabase.co","sb_publishable_ONXQyJvXKUIUqppaWnZG4w_epX1u7ml");
 const LIGHT={bg:"#F7F5F0",surface:"#FDFCFA",card:"#FFFFFF",border:"#EAE4D8",sage:"#7C9E87",sageL:"#A8C4AF",sageD:"#5A7D65",sand:"#C4A882",clay:"#C4856A",sky:"#7EA8C4",violet:"#9B8EC4",charcoal:"#2C2C2C",textMid:"#6B6458",textSub:"#9C9284",muted:"#B8B0A0",shell:"#E8E4DC"};
 const DARK={bg:"#161C18",surface:"#1C2420",card:"#212B25",border:"#2A3830",sage:"#7EC494",sageL:"#5A9970",sageD:"#A8D4B4",sand:"#D4B48C",clay:"#D4956A",sky:"#8AB8D4",violet:"#B4A8D8",charcoal:"#EAE6DE",textMid:"#A8A090",textSub:"#6E6860",muted:"#4A4840",shell:"#0E1210"};
@@ -11,8 +12,10 @@ const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loadin
 const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[]});
 const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);
 const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
+const[showScanner,setShowScanner]=useState(false);const[scannedCode,setScannedCode]=useState("");const[scannedProduct,setScannedProduct]=useState(null);const[scanLoading,setScanLoading]=useState(false);
 const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");const[listaCompra,setListaCompra]=useState([]);
 const chatBottom=useRef(null);
+const scannerRef=useRef(null);
 const T=dark?DARK:LIGHT;
 useEffect(()=>{
   const saved=localStorage.getItem("triflow_email");
@@ -27,6 +30,26 @@ useEffect(()=>{
   }
 },[]);
 useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+useEffect(()=>{
+  if(showScanner&&!scannedProduct){
+    try{
+      const scanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:250,height:250}});
+      scannerRef.current=scanner;
+      scanner.render(
+        (result)=>{
+          handleScanSuccess(result);
+          scanner.clear();
+        },
+        (error)=>{}
+      );
+    }catch(error){console.error("Scanner error:",error);}
+  }
+  return()=>{
+    if(scannerRef.current){
+      try{scannerRef.current.clear();}catch(e){}
+    }
+  };
+},[showScanner,scannedProduct]);
 const loadAll=async(uid)=>{
   let p=null;
   if(window.location.search.includes("dev")){
@@ -81,7 +104,45 @@ const agregarSugerencia=async(item,idx)=>{
   setStock(p=>[...p,data]);
   setListaCompra(p=>p.filter((_,i)=>i!==idx));
 };
+const lookupProductByBarcode=async(barcode)=>{
+  try{
+    const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    if(!res.ok)return null;
+    const data=await res.json();
+    if(!data.product)return null;
+    return{
+      nombre:data.product.product_name||barcode,
+      imagen:data.product.image_front_url||null,
+      marca:data.product.brands||"",
+      energia:data.product.nutriments?.energy_kcal_100g||null,
+      proteinas:data.product.nutriments?.proteins_100g||null,
+      grasas:data.product.nutriments?.fat_100g||null,
+      carbohidratos:data.product.nutriments?.carbohydrates_100g||null
+    };
+  }catch(error){
+    console.error("Open Food Facts error:",error);
+    return null;
+  }
+};
 const onboarding=[{icon:"◈",title:"Organiza tu cambio",desc:"Perfil personalizado según tus objetivos y restricciones"},{icon:"▦",title:"Tu alimentación ordenada",desc:"Menú semanal generado con IA basado en tu despensa"},{icon:"◉",title:"Con un profesional real",desc:"Tu asistente IA entrena contigo y adapta planes"}];
+const handleScanSuccess=async(decodedText)=>{
+  setScannedCode(decodedText);
+  setScanLoading(true);
+  const product=await lookupProductByBarcode(decodedText);
+  setScannedProduct(product||{nombre:decodedText,cantidad:"1",unidad:"un",imagen:null});
+  setScanLoading(false);
+};
+const confirmarProductoEscaneado=async()=>{
+  if(!scannedProduct?.nombre)return;
+  const payload={user_id:user.id,nombre:scannedProduct.nombre,cantidad:parseFloat(scannedProduct.cantidad)||1,unidad:scannedProduct.unidad||"un"};
+  const{data}=await supabase.from("stock").insert(payload).select().single();
+  if(data){
+    setStock(p=>[...p,data]);
+    setShowScanner(false);
+    setScannedCode("");
+    setScannedProduct(null);
+  }
+};
 const sendChat=async()=>{
   if(!chatInput.trim()||chatLoading)return;
   const txt=chatInput.trim();setChatInput("");
@@ -177,7 +238,10 @@ return(<div style={{background:T.shell,minHeight:"100vh",display:"flex",alignIte
 {tab==="despensa"&&(<div style={{padding:"20px 18px"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
 <div style={{fontFamily:"Playfair Display,serif",fontSize:22,fontWeight:600,color:T.charcoal}}>La Despensa</div>
+<div style={{display:"flex",gap:8}}>
+<button onClick={()=>setShowScanner(true)} style={{padding:"8px 14px",borderRadius:99,background:T.sand,border:"none",color:"#fff",fontSize:13,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>📸 Escanear</button>
 <button onClick={()=>setMostrarForm(!mostrarForm)} style={{padding:"8px 14px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:13,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>+ Agregar</button>
+</div>
 </div>
 {mostrarForm&&(<div style={{background:T.card,borderRadius:16,padding:16,border:"1px solid "+T.border,marginBottom:16}}>
 <input placeholder="Nombre del producto" value={nuevoProducto.nombre} onChange={e=>setNuevoProducto({...nuevoProducto,nombre:e.target.value})} style={inp()}/>
@@ -186,6 +250,35 @@ return(<div style={{background:T.shell,minHeight:"100vh",display:"flex",alignIte
 <select value={nuevoProducto.unidad} onChange={e=>setNuevoProducto({...nuevoProducto,unidad:e.target.value})} style={{...inp(),marginBottom:12}}><option value="g">gramos</option><option value="kg">kg</option><option value="ml">ml</option><option value="L">litros</option><option value="un">unidades</option></select>
 </div>
 <button onClick={agregarProducto} style={btn(T.sage,{padding:"10px"})}>Guardar producto</button>
+</div>)}
+{showScanner&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}}>
+<div style={{background:T.surface,borderRadius:20,padding:24,width:"90%",maxWidth:400,maxHeight:"80vh",overflow:"auto",position:"relative"}}>
+<button onClick={()=>setShowScanner(false)} style={{position:"absolute",top:12,right:12,width:32,height:32,borderRadius:99,background:T.card,border:"1px solid "+T.border,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>×</button>
+{!scannedProduct?(<div style={{textAlign:"center"}}>
+<div style={{fontSize:18,fontWeight:600,color:T.charcoal,marginBottom:16}}>Escanear Producto</div>
+<div id="reader" style={{marginBottom:16,borderRadius:12,overflow:"hidden",background:T.bg}}/>
+{scanLoading&&<div style={{fontSize:13,color:T.textSub,marginBottom:16}}>Buscando producto...</div>}
+</div>):(<div>
+<div style={{fontSize:18,fontWeight:600,color:T.charcoal,marginBottom:16}}>Confirmar Producto</div>
+{scannedProduct.imagen&&<img src={scannedProduct.imagen} alt={scannedProduct.nombre} style={{width:"100%",borderRadius:12,marginBottom:12,maxHeight:200,objectFit:"cover"}}/>}
+<div style={{background:T.card,borderRadius:12,padding:12,marginBottom:12}}>
+<div style={{fontSize:14,fontWeight:600,color:T.charcoal,marginBottom:4}}>{scannedProduct.nombre}</div>
+{scannedProduct.marca&&<div style={{fontSize:12,color:T.textSub,marginBottom:8}}>{scannedProduct.marca}</div>}
+{scannedProduct.energia&&<div style={{fontSize:11,color:T.textMid,marginBottom:2}}>Energía: {scannedProduct.energia} kcal</div>}
+{scannedProduct.proteinas&&<div style={{fontSize:11,color:T.textMid,marginBottom:2}}>Proteínas: {scannedProduct.proteinas}g</div>}
+{scannedProduct.grasas&&<div style={{fontSize:11,color:T.textMid,marginBottom:2}}>Grasas: {scannedProduct.grasas}g</div>}
+{scannedProduct.carbohidratos&&<div style={{fontSize:11,color:T.textMid}}>Carbos: {scannedProduct.carbohidratos}g</div>}
+</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+<input type="number" placeholder="Cantidad" value={scannedProduct.cantidad||1} onChange={e=>setScannedProduct({...scannedProduct,cantidad:e.target.value})} style={inp({marginBottom:0})}/>
+<select value={scannedProduct.unidad||"un"} onChange={e=>setScannedProduct({...scannedProduct,unidad:e.target.value})} style={{...inp({marginBottom:0}),padding:"10px 12px",fontSize:13}}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="L">L</option><option value="un">un</option></select>
+</div>
+<div style={{display:"flex",gap:8}}>
+<button onClick={()=>{setScannedProduct(null);setScannedCode("");}} style={btn(T.muted,{flex:1})}>Cancelar</button>
+<button onClick={confirmarProductoEscaneado} style={btn(T.sage,{flex:1})}>Agregar</button>
+</div>
+</div>)}
+</div>
 </div>)}
 {stock.length===0?(<div style={{background:T.card,borderRadius:18,padding:24,border:"1px solid "+T.border,textAlign:"center"}}>
 <div style={{fontSize:32,marginBottom:12}}>📦</div>
