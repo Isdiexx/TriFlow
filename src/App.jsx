@@ -64,8 +64,29 @@ export default function App(){
     const saved=localStorage.getItem("triflow_email");if(saved)setEmail(saved);
     if(window.location.search.includes("dev")){const devUser={id:"dev-user-123",email:"dev@test.com"};setUser(devUser);loadAll(devUser.id);}
     else{
-      supabase.auth.getSession().then(async({data:{session}})=>{if(session?.user){setUser(session.user);await loadAll(session.user.id);}});
-      supabase.auth.onAuthStateChange(async(_,session)=>{if(session?.user){setUser(session.user);await loadAll(session.user.id);}else{setUser(null);setProfile(null);setScreen("auth");}});
+      let mounted=true;
+      const initSession=async()=>{
+        try{
+          const timeout=new Promise((_,r)=>setTimeout(()=>r(new Error("Session timeout")),8000));
+          const sessionPromise=supabase.auth.getSession();
+          const{data:{session}}=await Promise.race([sessionPromise,timeout]);
+          if(mounted&&session?.user){setUser(session.user);await loadAll(session.user.id);}else if(mounted){setScreen("auth");}
+        }catch(e){
+          console.error("Auth init error:",e);
+          if(mounted){setUser(null);setProfile(null);setScreen("auth");}
+        }
+      };
+      initSession();
+      const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_,session)=>{
+        try{
+          if(session?.user){if(mounted){setUser(session.user);await loadAll(session.user.id);}}
+          else if(mounted){setUser(null);setProfile(null);setScreen("auth");}
+        }catch(e){
+          console.error("Auth state change error:",e);
+          if(mounted){setUser(null);setProfile(null);setScreen("auth");}
+        }
+      });
+      return()=>{mounted=false;subscription?.unsubscribe();};
     }
   },[]);
   useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
@@ -78,15 +99,20 @@ export default function App(){
   },[showScanner,scannedProduct]);
 
   const loadAll=async(uid)=>{
-    let p=null;
-    if(window.location.search.includes("dev")){p={id:uid,nombre:"Diego",apellido:"Test",peso_actual:85,peso_meta:75,objetivo:"bajar_peso",restricciones:["Sin lactosa"]};setProfile(p);setUser({id:uid,email:"test@triflow.com"});}
-    else{const{data:prof}=await supabase.from("profiles").select("*").eq("id",uid).single();p=prof;if(!p?.nombre){setScreen("onboarding");return;}setProfile(p);}
-    const{data:a}=await supabase.from("agua_diaria").select("*").eq("user_id",uid).eq("fecha",new Date().toISOString().split("T")[0]).single();setAgua(a?.vasos||0);
-    const{data:s}=await supabase.from("stock").select("*").eq("user_id",uid).order("created_at");setStock(s||[]);
-    const{data:m}=await supabase.from("menu_semanal").select("*").eq("user_id",uid).order("created_at");setMenu(m||[]);
-    const{data:se}=await supabase.from("sesiones").select("*").eq("user_id",uid).order("created_at");setSesiones(se||[]);
-    setMsgs([{role:"assistant",text:`Hola, ${p.nombre}! 🌱\n\nSoy tu asistente de TriFlow. Conozco tu perfil:\n\n**Objetivo:** ${p.objetivo?.replace(/_/g," ")}\n**Peso actual:** ${p.peso_actual} kg → Meta: ${p.peso_meta} kg\n**Restricciones:** ${p.restricciones?.length?p.restricciones.join(", "):"Ninguna"}\n\n¿En qué te ayudo hoy?`}]);
-    setScreen("app");
+    try{
+      let p=null;
+      if(window.location.search.includes("dev")){p={id:uid,nombre:"Diego",apellido:"Test",peso_actual:85,peso_meta:75,objetivo:"bajar_peso",restricciones:["Sin lactosa"]};setProfile(p);setUser({id:uid,email:"test@triflow.com"});}
+      else{const{data:prof,error:e1}=await supabase.from("profiles").select("*").eq("id",uid).single();if(e1){console.error("Profile load error:",e1);throw e1;}p=prof;if(!p?.nombre){setScreen("onboarding");return;}setProfile(p);}
+      const{data:a}=await supabase.from("agua_diaria").select("*").eq("user_id",uid).eq("fecha",new Date().toISOString().split("T")[0]).single();setAgua(a?.vasos||0);
+      const{data:s}=await supabase.from("stock").select("*").eq("user_id",uid).order("created_at");setStock(s||[]);
+      const{data:m}=await supabase.from("menu_semanal").select("*").eq("user_id",uid).order("created_at");setMenu(m||[]);
+      const{data:se}=await supabase.from("sesiones").select("*").eq("user_id",uid).order("created_at");setSesiones(se||[]);
+      setMsgs([{role:"assistant",text:`Hola, ${p.nombre}! 🌱\n\nSoy tu asistente de TriFlow. Conozco tu perfil:\n\n**Objetivo:** ${p.objetivo?.replace(/_/g," ")}\n**Peso actual:** ${p.peso_actual} kg → Meta: ${p.peso_meta} kg\n**Restricciones:** ${p.restricciones?.length?p.restricciones.join(", "):"Ninguna"}\n\n¿En qué te ayudo hoy?`}]);
+      setScreen("app");
+    }catch(e){
+      console.error("LoadAll error:",e);
+      setUser(null);setProfile(null);setScreen("auth");
+    }
   };
   const handleAuth=async()=>{setLoading(true);setError("");try{if(rememberMe)localStorage.setItem("triflow_email",email);else localStorage.removeItem("triflow_email");if(modo==="registro"){const{error:e}=await supabase.auth.signUp({email,password:pass});if(e)throw e;setError("Revisa tu email para confirmar tu cuenta");}else{const{error:e}=await supabase.auth.signInWithPassword({email,password:pass});if(e)throw e;}}catch(e){setError(e.message);}setLoading(false);};
   const saveProfile=async()=>{setLoading(true);const{error:e}=await supabase.from("profiles").upsert({id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)});if(!e){await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});setProfile({...ob,email:user.email});setScreen("app");}else setError(e.message);setLoading(false);};
