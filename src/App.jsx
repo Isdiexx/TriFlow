@@ -14,6 +14,7 @@ const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,se
 const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
 const[showScanner,setShowScanner]=useState(false);const[scannedCode,setScannedCode]=useState("");const[scannedProduct,setScannedProduct]=useState(null);const[scanLoading,setScanLoading]=useState(false);
 const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");const[listaCompra,setListaCompra]=useState([]);
+const[entrenamientoLoading,setEntrenamientoLoading]=useState(false);const[entrenamientoError,setEntrenamientoError]=useState("");
 const chatBottom=useRef(null);
 const scannerRef=useRef(null);
 const T=dark?DARK:LIGHT;
@@ -96,6 +97,22 @@ const generarMenu=async()=>{
     setListaCompra(Array.isArray(data.lista_compra)?data.lista_compra:[]);
   }catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}
   setMenuLoading(false);
+};
+const generarEntrenamiento=async()=>{
+  if(entrenamientoLoading)return;
+  setEntrenamientoLoading(true);setEntrenamientoError("");
+  try{
+    const res=await fetch("/api/generate-training",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);
+    if(!Array.isArray(data.sesiones)||!data.sesiones.length)throw new Error("Sin sesiones generadas");
+    await supabase.from("sesiones").delete().eq("user_id",user.id);
+    const rows=data.sesiones.map(s=>({user_id:user.id,semana:s.semana||1,dia:s.dia,grupo:s.grupo,descripcion:s.descripcion||"",completada:false}));
+    const{data:inserted,error}=await supabase.from("sesiones").insert(rows).select();
+    if(error)throw error;
+    setSesiones(inserted||rows);
+  }catch(e){console.error("generarEntrenamiento error:",e);setEntrenamientoError(e.message||"Error generando plan");}
+  setEntrenamientoLoading(false);
 };
 const agregarSugerencia=async(item,idx)=>{
   const payload={user_id:user.id,nombre:item.nombre,cantidad:parseFloat(item.cantidad)||0,unidad:item.unidad||"g"};
@@ -297,8 +314,9 @@ return(<div style={{background:T.shell,minHeight:"100vh",display:"flex",alignIte
 {sesiones.length===0?(<div style={{background:T.card,borderRadius:18,padding:24,border:"1px solid "+T.border,textAlign:"center"}}>
 <div style={{fontSize:32,marginBottom:12}}>💪</div>
 <div style={{fontFamily:"Playfair Display,serif",fontSize:18,color:T.charcoal,marginBottom:8}}>Sin plan aún</div>
-<div style={{fontSize:13,color:T.textMid,marginBottom:16}}>Pídele a tu asistente que genere tu mesociclo.</div>
-<button onClick={()=>setTab("asistente")} style={{padding:"10px 20px",borderRadius:99,background:T.violet,border:"none",color:"#fff",fontSize:13,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>Ir al asistente ✦</button>
+<div style={{fontSize:13,color:T.textMid,marginBottom:16}}>Genera tu primer mesociclo personalizado.</div>
+{entrenamientoError&&<div style={{fontSize:12,color:T.clay,background:T.clay+"18",padding:12,borderRadius:12,marginBottom:12}}>{entrenamientoError}</div>}
+<button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{padding:"10px 20px",borderRadius:99,background:entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",fontSize:13,cursor:entrenamientoLoading?"default":"pointer",fontFamily:"DM Sans,sans-serif"}}>{entrenamientoLoading?"Generando...":"Generar Mesociclo"}</button>
 </div>):(<div>
 <div style={{background:T.violet+"14",borderRadius:18,padding:16,border:"1px solid "+T.violet+"22",marginBottom:16}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",textAlign:"center",gap:8}}>
@@ -306,6 +324,8 @@ return(<div style={{background:T.shell,minHeight:"100vh",display:"flex",alignIte
 <div><div style={{fontFamily:"Playfair Display,serif",fontSize:18,fontWeight:600,color:T.violet}}>{sesiones.length?Math.round((sesiones.filter(s=>s.completada).length/sesiones.length)*100):0}%</div><div style={{fontSize:10,color:T.textSub}}>Adherencia</div></div>
 <div><div style={{fontFamily:"Playfair Display,serif",fontSize:18,fontWeight:600,color:T.violet}}>Sem {Math.max(...sesiones.map(s=>s.semana||1))}</div><div style={{fontSize:10,color:T.textSub}}>Progreso</div></div>
 </div></div>
+{entrenamientoError&&<div style={{fontSize:12,color:T.clay,background:T.clay+"18",padding:12,borderRadius:12,marginBottom:12}}>{entrenamientoError}</div>}
+<button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{width:"100%",padding:"10px 16px",borderRadius:12,background:entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",fontSize:13,cursor:entrenamientoLoading?"default":"pointer",fontFamily:"DM Sans,sans-serif",marginBottom:16}}>↻ {entrenamientoLoading?"Regenerando...":"Regenerar Mesociclo"}</button>
 {sesiones.map(s=>(<div key={s.id} onClick={()=>toggleSesion(s.id,s.completada)} style={{background:T.card,borderRadius:18,padding:"14px 16px",border:"1.5px solid "+(s.completada?T.violet+"44":T.border),marginBottom:10,cursor:"pointer",opacity:s.completada?.7:1,transition:"all .25s"}}>
 <div style={{display:"flex",alignItems:"center",gap:12}}>
 <div style={{width:26,height:26,borderRadius:99,border:"2px solid "+(s.completada?T.violet:T.border),background:s.completada?T.violet:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff"}}>{s.completada&&"✓"}</div>
