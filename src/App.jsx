@@ -107,7 +107,7 @@ const generarEntrenamiento=async()=>{
     if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);
     if(!Array.isArray(data.sesiones)||!data.sesiones.length)throw new Error("Sin sesiones generadas");
     await supabase.from("sesiones").delete().eq("user_id",user.id);
-    const rows=data.sesiones.map(s=>({user_id:user.id,semana:s.semana||1,dia:s.dia,grupo:s.grupo,descripcion:s.descripcion||"",completada:false}));
+    const rows=data.sesiones.map(s=>({user_id:user.id,dia:s.dia,grupo:`Sem ${s.semana||1} · ${s.grupo}`,completada:false}));
     const{data:inserted,error}=await supabase.from("sesiones").insert(rows).select();
     if(error)throw error;
     setSesiones(inserted||rows);
@@ -322,7 +322,7 @@ return(<div style={{background:T.shell,minHeight:"100vh",display:"flex",alignIte
 <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",textAlign:"center",gap:8}}>
 <div><div style={{fontFamily:"Playfair Display,serif",fontSize:18,fontWeight:600,color:T.violet}}>{sesiones.filter(s=>s.completada).length}/{sesiones.length}</div><div style={{fontSize:10,color:T.textSub}}>Sesiones</div></div>
 <div><div style={{fontFamily:"Playfair Display,serif",fontSize:18,fontWeight:600,color:T.violet}}>{sesiones.length?Math.round((sesiones.filter(s=>s.completada).length/sesiones.length)*100):0}%</div><div style={{fontSize:10,color:T.textSub}}>Adherencia</div></div>
-<div><div style={{fontFamily:"Playfair Display,serif",fontSize:18,fontWeight:600,color:T.violet}}>Sem {Math.max(...sesiones.map(s=>s.semana||1))}</div><div style={{fontSize:10,color:T.textSub}}>Progreso</div></div>
+<div><div style={{fontFamily:"Playfair Display,serif",fontSize:18,fontWeight:600,color:T.violet}}>{sesiones.filter(s=>s.completada).length===sesiones.length&&sesiones.length>0?"✓":"4 sem"}</div><div style={{fontSize:10,color:T.textSub}}>Progreso</div></div>
 </div></div>
 {entrenamientoError&&<div style={{fontSize:12,color:T.clay,background:T.clay+"18",padding:12,borderRadius:12,marginBottom:12}}>{entrenamientoError}</div>}
 <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{width:"100%",padding:"10px 16px",borderRadius:12,background:entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",fontSize:13,cursor:entrenamientoLoading?"default":"pointer",fontFamily:"DM Sans,sans-serif",marginBottom:16}}>↻ {entrenamientoLoading?"Regenerando...":"Regenerar Mesociclo"}</button>
