@@ -11,11 +11,13 @@ export default async function handler(req, res) {
 
   const objetivoTexto = (profile.objetivo || '').replace(/_/g, ' ');
   const edadTexto = profile.edad || 30;
+  const pais = profile.pais || 'Chile';
 
   const system = `Eres un entrenador personal certificado especializado en programación de fuerza y acondicionamiento.
 
 Perfil del usuario:
 - Nombre: ${profile.nombre || 'Usuario'}
+- País: ${pais} (usa vocabulario local: en Chile "polera"/"calza", en Argentina "remera"/"calza", en México "playera"/"licra", etc. Usa términos de ejercicios universales pero el lenguaje natural debe sentirse del país)
 - Objetivo: ${objetivoTexto}
 - Peso actual: ${profile.peso_actual}kg, Meta: ${profile.peso_meta}kg
 - Edad: ${edadTexto} años

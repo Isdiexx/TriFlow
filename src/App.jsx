@@ -10,6 +10,7 @@ const DARK={bg:"#161C18",surface:"#1C2420",card:"#212B25",border:"#2A3830",borde
 const TABS=[{id:"inicio",label:"Inicio",icon:"◈"},{id:"habito",label:"Hábito",icon:"▦"},{id:"despensa",label:"Despensa",icon:"⬡"},{id:"entrena",label:"Entrena",icon:"◉"},{id:"asistente",label:"Asistente",icon:"✦"},{id:"perfil",label:"Perfil",icon:"◎"}];
 const DIAS=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const DIAS_C=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const PAISES=[{n:"Chile",f:"🇨🇱"},{n:"Argentina",f:"🇦🇷"},{n:"Perú",f:"🇵🇪"},{n:"Colombia",f:"🇨🇴"},{n:"Venezuela",f:"🇻🇪"},{n:"Ecuador",f:"🇪🇨"},{n:"Uruguay",f:"🇺🇾"},{n:"Paraguay",f:"🇵🇾"},{n:"Bolivia",f:"🇧🇴"},{n:"México",f:"🇲🇽"},{n:"España",f:"🇪🇸"},{n:"Costa Rica",f:"🇨🇷"},{n:"Panamá",f:"🇵🇦"},{n:"Guatemala",f:"🇬🇹"},{n:"Honduras",f:"🇭🇳"},{n:"El Salvador",f:"🇸🇻"},{n:"Nicaragua",f:"🇳🇮"},{n:"República Dominicana",f:"🇩🇴"},{n:"Cuba",f:"🇨🇺"},{n:"Puerto Rico",f:"🇵🇷"},{n:"Otro",f:"🌎"}];
 
 const makeCSS=(dark)=>`
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -48,7 +49,7 @@ export default function App(){
   const[tab,setTab]=useState("inicio");
   const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loading,setLoading]=useState(false);const[error,setError]=useState("");
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
-  const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[]});
+  const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile"});
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
   const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
   const[diaMenu,setDiaMenu]=useState(0);const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
@@ -113,7 +114,7 @@ export default function App(){
     }
   };
   const handleAuth=async()=>{setLoading(true);setError("");try{if(rememberMe)localStorage.setItem("triflow_email",email);else localStorage.removeItem("triflow_email");if(modo==="registro"){const{error:e}=await supabase.auth.signUp({email,password:pass});if(e)throw e;setError("Revisa tu email para confirmar tu cuenta");}else{const{error:e}=await supabase.auth.signInWithPassword({email,password:pass});if(e)throw e;}}catch(e){setError(e.message);}setLoading(false);};
-  const saveProfile=async()=>{setLoading(true);try{const{error:e}=await supabase.from("profiles").upsert({id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)});if(e)throw e;await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});await loadAll(user.id);}catch(e){console.error("saveProfile error:",e);setError(e.message||"Error al guardar perfil");}setLoading(false);};
+  const saveProfile=async()=>{setLoading(true);try{const payload={id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)};let{error:e}=await supabase.from("profiles").upsert(payload);if(e&&/pais/i.test(e.message||"")){console.warn("Columna pais no existe aún en DB, reintentando sin ella");const{pais,...payloadSinPais}=payload;const r=await supabase.from("profiles").upsert(payloadSinPais);e=r.error;}if(e)throw e;await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});await loadAll(user.id);}catch(e){console.error("saveProfile error:",e);setError(e.message||"Error al guardar perfil");}setLoading(false);};
   const logout=async()=>{await supabase.auth.signOut();};
   const updateAgua=async(v)=>{setAgua(v);await supabase.from("agua_diaria").upsert({user_id:user.id,fecha:new Date().toISOString().split("T")[0],vasos:v},{onConflict:"user_id,fecha"});};
   const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
@@ -125,7 +126,7 @@ export default function App(){
   const lookupProductByBarcode=async(barcode)=>{try{const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);if(!res.ok)return null;const data=await res.json();if(!data.product)return null;return{nombre:data.product.product_name||barcode,imagen:data.product.image_front_url||null,marca:data.product.brands||"",energia:data.product.nutriments?.energy_kcal_100g||null,proteinas:data.product.nutriments?.proteins_100g||null,grasas:data.product.nutriments?.fat_100g||null,carbohidratos:data.product.nutriments?.carbohydrates_100g||null};}catch(e){console.error("Open Food Facts error:",e);return null;}};
   const handleScanSuccess=async(decodedText)=>{setScannedCode(decodedText);setScanLoading(true);const product=await lookupProductByBarcode(decodedText);setScannedProduct(product||{nombre:decodedText,cantidad:"1",unidad:"un",imagen:null});setScanLoading(false);};
   const confirmarProductoEscaneado=async()=>{if(!scannedProduct?.nombre)return;const payload={user_id:user.id,nombre:scannedProduct.nombre,cantidad:parseFloat(scannedProduct.cantidad)||1,unidad:scannedProduct.unidad||"un"};const{data}=await supabase.from("stock").insert(payload).select().single();if(data){setStock(p=>[...p,data]);setShowScanner(false);setScannedCode("");setScannedProduct(null);}};
-  const sendChat=async()=>{if(!chatInput.trim()||chatLoading)return;const txt=chatInput.trim();setChatInput("");setMsgs(p=>[...p,{role:"user",text:txt}]);setChatLoading(true);try{const stockInfo=stock.map(s=>`${s.nombre}: ${s.cantidad}${s.unidad}`).join(", ");const system=`Eres el asistente personal de TriFlow para ${profile?.nombre} ${profile?.apellido}.\nPerfil: objetivo ${profile?.objetivo?.replace(/_/g," ")}, peso actual ${profile?.peso_actual}kg, meta ${profile?.peso_meta}kg, restricciones: ${profile?.restricciones?.join(", ")||"ninguna"}.\nDespensa actual: ${stockInfo||"vacía"}.\nResponde en español, cálido y conciso (máx 200 palabras).`;const msgHistory=msgs.slice(1).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")}));const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,system,messages:[...msgHistory,{role:"user",content:txt}]})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);const responseText=data?.content?.[0]?.text;if(!responseText)throw new Error("Respuesta vacía del servidor");setMsgs(p=>[...p,{role:"assistant",text:responseText}]);}catch(e){console.error("Chat error:",e);setMsgs(p=>[...p,{role:"assistant",text:`Error: ${e.message||"No se pudo obtener respuesta"}. Intenta de nuevo.`}]);}setChatLoading(false);};
+  const sendChat=async()=>{if(!chatInput.trim()||chatLoading)return;const txt=chatInput.trim();setChatInput("");setMsgs(p=>[...p,{role:"user",text:txt}]);setChatLoading(true);try{const stockInfo=stock.map(s=>`${s.nombre}: ${s.cantidad}${s.unidad}`).join(", ");const paisU=profile?.pais||"Chile";const system=`Eres el asistente personal de TriFlow para ${profile?.nombre} ${profile?.apellido}.\nPerfil: ${paisU} 🌎 · objetivo ${profile?.objetivo?.replace(/_/g," ")}, peso actual ${profile?.peso_actual}kg, meta ${profile?.peso_meta}kg, restricciones: ${profile?.restricciones?.join(", ")||"ninguna"}.\nDespensa actual: ${stockInfo||"vacía"}.\n\nIMPORTANTE: Adapta tu lenguaje, modismos y nombres de comidas al país del usuario (${paisU}). Por ejemplo:\n- Chile: papa, palta, poroto, choclo, once, marraqueta, cazuela, charquicán\n- Argentina: papa, palta, mate, milanesa, asado, merienda, facturas\n- Perú: papa, palta, ceviche, ají de gallina, lomo saltado, lonche\n- Colombia: papa, aguacate, arepa, frijoles, ajiaco, sancocho, algo\n- Venezuela: aguacate, arepa, caraota, pabellón, cachapa\n- México: jitomate, aguacate, frijol, tortilla, chilaquiles, tacos\n- España: patata, aguacate, judía, garbanzo, tortilla, paella\nUsa modismos naturales del país sin caer en estereotipo. Responde en español, cálido y conciso (máx 200 palabras).`;const msgHistory=msgs.slice(1).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")}));const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,system,messages:[...msgHistory,{role:"user",content:txt}]})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);const responseText=data?.content?.[0]?.text;if(!responseText)throw new Error("Respuesta vacía del servidor");setMsgs(p=>[...p,{role:"assistant",text:responseText}]);}catch(e){console.error("Chat error:",e);setMsgs(p=>[...p,{role:"assistant",text:`Error: ${e.message||"No se pudo obtener respuesta"}. Intenta de nuevo.`}]);}setChatLoading(false);};
 
   const inp=(x={})=>({width:"100%",padding:"12px 14px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.card,fontSize:14,marginBottom:12,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif",...x});
   const btn=(bg,x={})=>({width:"100%",padding:14,borderRadius:99,background:bg,border:"none",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",...x});
@@ -204,6 +205,10 @@ export default function App(){
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontWeight:600,color:T.charcoal,marginBottom:4}}>Cuéntanos sobre ti</div>
         <div style={{fontSize:14,color:T.textSub,marginBottom:24}}>Para personalizar tu experiencia en TriFlow</div>
         {error&&<div style={{background:T.clay+"22",border:`1px solid ${T.clay}`,borderRadius:12,padding:"10px 12px",marginBottom:16,fontSize:13,color:T.clay}}>{error}</div>}
+        <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.07em",marginBottom:8}}>PAÍS · Para personalizar tu menú con comida local</div>
+        <select value={ob.pais} onChange={e=>setOb({...ob,pais:e.target.value})} style={{...inp(),appearance:"none",backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='${encodeURIComponent(T.textMid)}' d='M6 8L0 0h12z'/></svg>")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 14px center",paddingRight:"36px",cursor:"pointer"}}>
+          {PAISES.map(p=>(<option key={p.n} value={p.n}>{p.f}  {p.n}</option>))}
+        </select>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <input placeholder="Nombre" value={ob.nombre} onChange={e=>setOb({...ob,nombre:e.target.value})} style={inp()}/>
           <input placeholder="Apellido" value={ob.apellido} onChange={e=>setOb({...ob,apellido:e.target.value})} style={inp()}/>
@@ -625,14 +630,26 @@ export default function App(){
               <div style={{padding:"18px 18px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20}}>
                   <Avatar name={`${profile?.nombre||"U"} ${profile?.apellido||""}`} size={56} T={T}/>
-                  <div>
-                    <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.charcoal}}>{profile?.nombre} {profile?.apellido}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.charcoal,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      {profile?.nombre} {profile?.apellido}
+                      {profile?.pais&&(()=>{const p=PAISES.find(x=>x.n===profile.pais);return p?<span title={p.n} style={{fontSize:18}}>{p.f}</span>:null;})()}
+                    </div>
                     <div style={{fontSize:12,color:T.textSub,marginBottom:6}}>{user?.email}</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                       <Chip color={T.sage} T={T}>{profile?.objetivo?.replace(/_/g," ")}</Chip>
                       {profile?.restricciones?.map(r=><Chip key={r} color={T.sand} T={T}>{r}</Chip>)}
                     </div>
                   </div>
+                </div>
+                <div style={{background:T.card,borderRadius:16,padding:"13px 16px",border:`1px solid ${T.border}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,transition:"all .4s"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>País</div>
+                    <div style={{fontSize:12,color:T.textSub,marginTop:1}}>Personaliza tus menús con comida local</div>
+                  </div>
+                  <select value={profile?.pais||"Chile"} onChange={async e=>{const np=e.target.value;setProfile(p=>({...p,pais:np}));await supabase.from("profiles").update({pais:np}).eq("id",user.id);}} style={{padding:"7px 10px",borderRadius:10,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:13,color:T.charcoal,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none"}}>
+                    {PAISES.map(p=>(<option key={p.n} value={p.n}>{p.f}  {p.n}</option>))}
+                  </select>
                 </div>
                 <div style={{background:T.card,borderRadius:16,padding:"13px 16px",border:`1px solid ${T.border}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",transition:"all .4s"}}>
                   <div><div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{dark?"Modo oscuro activo":"Modo claro activo"}</div><div style={{fontSize:12,color:T.textSub,marginTop:1}}>Cambia la apariencia de la app</div></div>
