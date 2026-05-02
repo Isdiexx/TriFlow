@@ -4,8 +4,8 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 
 const supabase = createClient("https://uiktwbtwzotqduzwtjcb.supabase.co","sb_publishable_ONXQyJvXKUIUqppaWnZG4w_epX1u7ml");
 
-const LIGHT={bg:"#F7F5F0",surface:"#FDFCFA",card:"#FFFFFF",border:"#EAE4D8",border2:"#D8D0C0",sage:"#7C9E87",sageL:"#A8C4AF",sageD:"#5A7D65",sand:"#C4A882",clay:"#C4856A",sky:"#7EA8C4",violet:"#9B8EC4",violetL:"#C4B8E8",violetD:"#7060A8",charcoal:"#2C2C2C",textMid:"#6B6458",textSub:"#9C9284",muted:"#B8B0A0",shell:"#E8E4DC",shellRing:"#D8D2C8",notch:"#FDFCFA",notchPill:"#2C2C2C",notchText:"#9C9284",scrollbar:"#C8C0B0"};
-const DARK={bg:"#161C18",surface:"#1C2420",card:"#212B25",border:"#2A3830",border2:"#354540",sage:"#7EC494",sageL:"#5A9970",sageD:"#A8D4B4",sand:"#D4B48C",clay:"#D4956A",sky:"#8AB8D4",violet:"#B4A8D8",violetL:"#7868A8",violetD:"#CEC4EC",charcoal:"#EAE6DE",textMid:"#A8A090",textSub:"#6E6860",muted:"#4A4840",shell:"#0E1210",shellRing:"#2A3830",notch:"#1C2420",notchPill:"#EAE6DE",notchText:"#6E6860",scrollbar:"#2A3830"};
+const LIGHT={bg:"#F7F5F0",surface:"#FDFCFA",card:"#FFFFFF",border:"#EAE4D8",border2:"#D8D0C0",sage:"#7C9E87",sageL:"#A8C4AF",sageD:"#5A7D65",sand:"#C4A882",clay:"#C4856A",sky:"#7EA8C4",violet:"#9B8EC4",violetL:"#C4B8E8",violetD:"#7060A8",charcoal:"#2C2C2C",textMid:"#6B6458",textSub:"#9C9284",muted:"#B8B0A0",scrollbar:"#C8C0B0"};
+const DARK={bg:"#161C18",surface:"#1C2420",card:"#212B25",border:"#2A3830",border2:"#354540",sage:"#7EC494",sageL:"#5A9970",sageD:"#A8D4B4",sand:"#D4B48C",clay:"#D4956A",sky:"#8AB8D4",violet:"#B4A8D8",violetL:"#7868A8",violetD:"#CEC4EC",charcoal:"#EAE6DE",textMid:"#A8A090",textSub:"#6E6860",muted:"#4A4840",scrollbar:"#2A3830"};
 
 const TABS=[{id:"inicio",label:"Inicio",icon:"◈"},{id:"habito",label:"Hábito",icon:"▦"},{id:"despensa",label:"Despensa",icon:"⬡"},{id:"entrena",label:"Entrena",icon:"◉"},{id:"asistente",label:"Asistente",icon:"✦"},{id:"perfil",label:"Perfil",icon:"◎"}];
 const DIAS=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
@@ -224,19 +224,11 @@ export default function App(){
   const saludo=hora<12?"Buenos días":hora<19?"Buenas tardes":"Buenas noches";
 
   return(
-    <div style={{minHeight:"100vh",background:T.shell,display:"flex",alignItems:"center",justifyContent:"center",padding:"32px 20px",fontFamily:"'DM Sans',sans-serif",transition:"background .4s"}}>
+    <div style={{width:"100%",minHeight:"100vh",background:T.bg,display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif",transition:"background .4s"}}>
       <style>{makeCSS(dark)}</style>
-      <div style={{width:"100%",maxWidth:390,background:T.bg,borderRadius:44,overflow:"hidden",boxShadow:`0 40px 100px rgba(0,0,0,${dark?.38:.18}), 0 0 0 8px ${T.shellRing}`,position:"relative",minHeight:780,transition:"all .4s"}}>
 
-        {/* Notch */}
-        <div style={{height:44,background:T.notch,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 24px",transition:"background .4s",flexShrink:0}}>
-          <div style={{fontSize:12,fontWeight:600,color:T.notchText}}>9:41</div>
-          <div style={{width:96,height:26,background:T.notchPill,borderRadius:99,transition:"background .4s"}}/>
-          <div style={{fontSize:11,color:T.notchText}}>●●●</div>
-        </div>
-
-        {/* Scroll container */}
-        <div style={{height:"calc(780px - 104px)",overflowY:"auto",background:T.bg,transition:"background .4s"}}>
+      {/* Main content scroll area */}
+      <div style={{flex:1,overflowY:"auto",background:T.bg,transition:"background .4s",paddingBottom:60}}>
 
           {/* ═══ INICIO ═══ */}
           {tab==="inicio"&&(
@@ -656,18 +648,17 @@ export default function App(){
             </div>
           )}
 
-        </div>
+      </div>
 
-        {/* NavBar */}
-        <div style={{position:"absolute",bottom:0,left:0,right:0,height:60,background:T.surface,borderTop:`1px solid ${T.border}`,display:"flex",transition:"background .4s,border-color .4s"}}>
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:"transparent",cursor:"pointer"}}>
-              <span style={{fontSize:tab===t.id?18:16,color:tab===t.id?T.sage:T.muted,transition:"all .2s"}}>{t.icon}</span>
-              <span style={{fontSize:9,color:tab===t.id?T.sage:T.muted,fontWeight:tab===t.id?600:400,fontFamily:"'DM Sans',sans-serif",transition:"color .2s"}}>{t.label}</span>
-              {tab===t.id&&<div style={{width:16,height:2,borderRadius:99,background:T.sage,marginTop:1}}/>}
-            </button>
-          ))}
-        </div>
+      {/* NavBar */}
+      <div style={{position:"fixed",bottom:0,left:0,right:0,height:60,background:T.surface,borderTop:`1px solid ${T.border}`,display:"flex",transition:"background .4s,border-color .4s",zIndex:1000}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:"transparent",cursor:"pointer"}}>
+            <span style={{fontSize:tab===t.id?18:16,color:tab===t.id?T.sage:T.muted,transition:"all .2s"}}>{t.icon}</span>
+            <span style={{fontSize:9,color:tab===t.id?T.sage:T.muted,fontWeight:tab===t.id?600:400,fontFamily:"'DM Sans',sans-serif",transition:"color .2s"}}>{t.label}</span>
+            {tab===t.id&&<div style={{width:16,height:2,borderRadius:99,background:T.sage,marginTop:1}}/>}
+          </button>
+        ))}
       </div>
     </div>
   );
