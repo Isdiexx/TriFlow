@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
-const supabase = createClient("https://uiktwbtwzotqduzwtjcb.supabase.co","sb_publishable_ONXQyJvXKUIUqppaWnZG4w_epX1u7ml");
+const supabase = createClient("https://uiktwbtwzotqduzwtjcb.supabase.co","sb_publishable_ONXQyJvXKUIUqppaWnZG4w_epX1u7ml",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"implicit"}});
 
 const LIGHT={bg:"#F7F5F0",surface:"#FDFCFA",card:"#FFFFFF",border:"#EAE4D8",border2:"#D8D0C0",sage:"#7C9E87",sageL:"#A8C4AF",sageD:"#5A7D65",sand:"#C4A882",clay:"#C4856A",sky:"#7EA8C4",violet:"#9B8EC4",violetL:"#C4B8E8",violetD:"#7060A8",charcoal:"#2C2C2C",textMid:"#6B6458",textSub:"#9C9284",muted:"#B8B0A0",scrollbar:"#C8C0B0"};
 const DARK={bg:"#161C18",surface:"#1C2420",card:"#212B25",border:"#2A3830",border2:"#354540",sage:"#7EC494",sageL:"#5A9970",sageD:"#A8D4B4",sand:"#D4B48C",clay:"#D4956A",sky:"#8AB8D4",violet:"#B4A8D8",violetL:"#7868A8",violetD:"#CEC4EC",charcoal:"#EAE6DE",textMid:"#A8A090",textSub:"#6E6860",muted:"#4A4840",scrollbar:"#2A3830"};
@@ -44,7 +44,7 @@ function ThemeToggle({dark,toggle,T}){
 export default function App(){
   const[dark,setDark]=useState(false);
   const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);
-  const[screen,setScreen]=useState(window.location.search.includes("dev")?"app":"auth");
+  const[screen,setScreen]=useState(window.location.search.includes("dev")?"app":"loading");
   const[tab,setTab]=useState("inicio");
   const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loading,setLoading]=useState(false);const[error,setError]=useState("");
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
@@ -62,32 +62,30 @@ export default function App(){
 
   useEffect(()=>{
     const saved=localStorage.getItem("triflow_email");if(saved)setEmail(saved);
-    if(window.location.search.includes("dev")){const devUser={id:"dev-user-123",email:"dev@test.com"};setUser(devUser);loadAll(devUser.id);}
-    else{
-      let mounted=true;
-      const initSession=async()=>{
-        try{
-          const timeout=new Promise((_,r)=>setTimeout(()=>r(new Error("Session timeout")),8000));
-          const sessionPromise=supabase.auth.getSession();
-          const{data:{session}}=await Promise.race([sessionPromise,timeout]);
-          if(mounted&&session?.user){setUser(session.user);await loadAll(session.user.id);}else if(mounted){setScreen("auth");}
-        }catch(e){
-          console.error("Auth init error:",e);
-          if(mounted){setUser(null);setProfile(null);setScreen("auth");}
+    if(window.location.search.includes("dev")){const devUser={id:"dev-user-123",email:"dev@test.com"};setUser(devUser);loadAll(devUser.id);return;}
+    let mounted=true;
+    let processing=false;
+    let initialized=false;
+    const fallbackTimer=setTimeout(()=>{if(mounted&&!initialized){console.warn("Auth timeout fallback - sending to auth screen");setScreen("auth");}},10000);
+    const{data:{subscription}}=supabase.auth.onAuthStateChange(async(event,session)=>{
+      console.log("Auth event:",event,"session?",!!session);
+      if(!mounted||processing)return;
+      processing=true;initialized=true;clearTimeout(fallbackTimer);
+      try{
+        if(session?.user){
+          setUser(session.user);
+          await loadAll(session.user.id);
+          if(window.location.hash.includes("access_token")){window.history.replaceState(null,"",window.location.pathname+window.location.search);}
+        }else{
+          setUser(null);setProfile(null);setScreen("auth");
         }
-      };
-      initSession();
-      const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_,session)=>{
-        try{
-          if(session?.user){if(mounted){setUser(session.user);await loadAll(session.user.id);}}
-          else if(mounted){setUser(null);setProfile(null);setScreen("auth");}
-        }catch(e){
-          console.error("Auth state change error:",e);
-          if(mounted){setUser(null);setProfile(null);setScreen("auth");}
-        }
-      });
-      return()=>{mounted=false;subscription?.unsubscribe();};
-    }
+      }catch(e){
+        console.error("Auth state change error:",e);
+        if(mounted){setUser(null);setProfile(null);setScreen("auth");}
+      }
+      processing=false;
+    });
+    return()=>{mounted=false;clearTimeout(fallbackTimer);subscription?.unsubscribe();};
   },[]);
   useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
   useEffect(()=>{
@@ -102,8 +100,8 @@ export default function App(){
     try{
       let p=null;
       if(window.location.search.includes("dev")){p={id:uid,nombre:"Diego",apellido:"Test",peso_actual:85,peso_meta:75,objetivo:"bajar_peso",restricciones:["Sin lactosa"]};setProfile(p);setUser({id:uid,email:"test@triflow.com"});}
-      else{const{data:prof,error:e1}=await supabase.from("profiles").select("*").eq("id",uid).single();if(e1){console.error("Profile load error:",e1);throw e1;}p=prof;if(!p?.nombre){setScreen("onboarding");return;}setProfile(p);}
-      const{data:a}=await supabase.from("agua_diaria").select("*").eq("user_id",uid).eq("fecha",new Date().toISOString().split("T")[0]).single();setAgua(a?.vasos||0);
+      else{const{data:prof,error:e1}=await supabase.from("profiles").select("*").eq("id",uid).maybeSingle();if(e1&&e1.code!=="PGRST116"){console.error("Profile load error:",e1);throw e1;}p=prof;if(!p?.nombre){setScreen("onboarding");return;}setProfile(p);}
+      const{data:a}=await supabase.from("agua_diaria").select("*").eq("user_id",uid).eq("fecha",new Date().toISOString().split("T")[0]).maybeSingle();setAgua(a?.vasos||0);
       const{data:s}=await supabase.from("stock").select("*").eq("user_id",uid).order("created_at");setStock(s||[]);
       const{data:m}=await supabase.from("menu_semanal").select("*").eq("user_id",uid).order("created_at");setMenu(m||[]);
       const{data:se}=await supabase.from("sesiones").select("*").eq("user_id",uid).order("created_at");setSesiones(se||[]);
@@ -115,7 +113,7 @@ export default function App(){
     }
   };
   const handleAuth=async()=>{setLoading(true);setError("");try{if(rememberMe)localStorage.setItem("triflow_email",email);else localStorage.removeItem("triflow_email");if(modo==="registro"){const{error:e}=await supabase.auth.signUp({email,password:pass});if(e)throw e;setError("Revisa tu email para confirmar tu cuenta");}else{const{error:e}=await supabase.auth.signInWithPassword({email,password:pass});if(e)throw e;}}catch(e){setError(e.message);}setLoading(false);};
-  const saveProfile=async()=>{setLoading(true);const{error:e}=await supabase.from("profiles").upsert({id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)});if(!e){await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});setProfile({...ob,email:user.email});setScreen("app");}else setError(e.message);setLoading(false);};
+  const saveProfile=async()=>{setLoading(true);try{const{error:e}=await supabase.from("profiles").upsert({id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)});if(e)throw e;await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});await loadAll(user.id);}catch(e){console.error("saveProfile error:",e);setError(e.message||"Error al guardar perfil");}setLoading(false);};
   const logout=async()=>{await supabase.auth.signOut();};
   const updateAgua=async(v)=>{setAgua(v);await supabase.from("agua_diaria").upsert({user_id:user.id,fecha:new Date().toISOString().split("T")[0],vasos:v},{onConflict:"user_id,fecha"});};
   const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
@@ -137,6 +135,16 @@ export default function App(){
   const stockCritico=stock.filter(s=>s.cantidad<=(s.minimo||0));
   const sesPorSemana=(n)=>sesiones.filter(s=>s.grupo?.startsWith(`Sem ${n}`));
   const onboardingSlides=[{emoji:"🌱",title:"Organiza tu cambio",desc:"Perfil personalizado según tus objetivos y restricciones"},{emoji:"🥗",title:"Tu alimentación, ordenada",desc:"Menú semanal generado con IA basado en tu despensa"},{emoji:"✦",title:"Con un profesional real",desc:"Tu asistente IA entrena contigo y adapta planes"}];
+
+  /* ── LOADING ──────────────────────────────────────────── */
+  if(screen==="loading")return(
+    <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20,fontFamily:"'DM Sans',sans-serif",transition:"background .4s"}}>
+      <style>{makeCSS(dark)}</style>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:38,fontWeight:600,color:T.charcoal}}>Tri<span style={{color:T.sage}}>Flow</span></div>
+      <div style={{fontSize:32,animation:"pulse 1.4s ease infinite"}}>🌱</div>
+      <div style={{fontSize:13,color:T.textSub}}>Cargando tu espacio...</div>
+    </div>
+  );
 
   /* ── AUTH ─────────────────────────────────────────────── */
   if(screen==="auth"){
