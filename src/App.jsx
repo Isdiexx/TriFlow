@@ -42,6 +42,30 @@ function ThemeToggle({dark,toggle,T}){
   </button>);
 }
 
+function WeightSparkline({data,color,width=120,height=40}){
+  if(!data||data.length<2)return null;
+  const vals=data.map(d=>parseFloat(d.peso)).filter(v=>!isNaN(v));
+  if(vals.length<2)return null;
+  const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  const pad=4,w=width-pad*2,h=height-pad*2;
+  const pts=vals.map((v,i)=>[pad+i*(w/(vals.length-1)),pad+h-(((v-mn)/rng)*h)]);
+  const path="M"+pts.map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join("L");
+  const area=path+`L${pts[pts.length-1][0].toFixed(1)},${height}L${pts[0][0].toFixed(1)},${height}Z`;
+  return(
+    <svg width={width} height={height} style={{overflow:"visible"}}>
+      <defs>
+        <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#wg)"/>
+      <path d={path} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx={pts[pts.length-1][0]} cy={pts[pts.length-1][1]} r="3" fill={color}/>
+    </svg>
+  );
+}
+
 export default function App(){
   const[dark,setDark]=useState(false);
   const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);
@@ -51,6 +75,7 @@ export default function App(){
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
   const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile"});
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
+  const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");
   const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
   const[diaMenu,setDiaMenu]=useState(0);const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
   const[showScanner,setShowScanner]=useState(false);const[scannedCode,setScannedCode]=useState("");const[scannedProduct,setScannedProduct]=useState(null);const[scanLoading,setScanLoading]=useState(false);
@@ -106,6 +131,7 @@ export default function App(){
       const{data:s}=await supabase.from("stock").select("*").eq("user_id",uid).order("created_at");setStock(s||[]);
       const{data:m}=await supabase.from("menu_semanal").select("*").eq("user_id",uid).order("created_at");setMenu(m||[]);
       const{data:se}=await supabase.from("sesiones").select("*").eq("user_id",uid).order("created_at");setSesiones(se||[]);
+      const{data:hp}=await supabase.from("progreso_peso").select("peso,fecha,created_at").eq("user_id",uid).order("created_at",{ascending:true}).limit(60);setHistorialPeso(hp||[]);
       setMsgs([{role:"assistant",text:`Hola, ${p.nombre}! 🌱\n\nSoy tu asistente de TriFlow. Conozco tu perfil:\n\n**Objetivo:** ${p.objetivo?.replace(/_/g," ")}\n**Peso actual:** ${p.peso_actual} kg → Meta: ${p.peso_meta} kg\n**Restricciones:** ${p.restricciones?.length?p.restricciones.join(", "):"Ninguna"}\n\n¿En qué te ayudo hoy?`}]);
       setScreen("app");
     }catch(e){
@@ -117,6 +143,14 @@ export default function App(){
   const saveProfile=async()=>{setLoading(true);try{const payload={id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)};let{error:e}=await supabase.from("profiles").upsert(payload);if(e&&/pais/i.test(e.message||"")){console.warn("Columna pais no existe aún en DB, reintentando sin ella");const{pais,...payloadSinPais}=payload;const r=await supabase.from("profiles").upsert(payloadSinPais);e=r.error;}if(e)throw e;await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});await loadAll(user.id);}catch(e){console.error("saveProfile error:",e);setError(e.message||"Error al guardar perfil");}setLoading(false);};
   const logout=async()=>{await supabase.auth.signOut();};
   const updateAgua=async(v)=>{setAgua(v);await supabase.from("agua_diaria").upsert({user_id:user.id,fecha:new Date().toISOString().split("T")[0],vasos:v},{onConflict:"user_id,fecha"});};
+  const registrarPeso=async()=>{
+    const p=parseFloat(nuevoPesoVal);
+    if(!p||p<20||p>400)return;
+    const hoy=new Date().toISOString().split("T")[0];
+    const{data:row}=await supabase.from("progreso_peso").insert({user_id:user.id,peso:p,fecha:hoy}).select().single();
+    if(row){setHistorialPeso(prev=>[...prev,row]);setProfile(pr=>({...pr,peso_actual:p}));await supabase.from("profiles").update({peso_actual:p}).eq("id",user.id);}
+    setNuevoPesoVal("");setShowPesoInput(false);
+  };
   const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
   const eliminarProducto=async(id)=>{await supabase.from("stock").delete().eq("id",id);setStock(p=>p.filter(s=>s.id!==id));};
   const toggleSesion=async(id,completada)=>{await supabase.from("sesiones").update({completada:!completada}).eq("id",id);setSesiones(p=>p.map(s=>s.id===id?{...s,completada:!completada}:s));};
@@ -272,28 +306,69 @@ export default function App(){
               </div>
 
               <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:12}}>
-                {/* Progreso peso + ProgressRing agua */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <div style={{background:T.card,borderRadius:22,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
-                    <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.07em",marginBottom:6}}>PESO</div>
-                    <div style={{fontFamily:"'Playfair Display',serif",fontSize:28,fontWeight:600,color:T.charcoal,lineHeight:1}}>{profile?.peso_actual}<span style={{fontSize:14,fontWeight:400}}> kg</span></div>
-                    <div style={{fontSize:11,color:T.textSub,marginBottom:8}}>meta {profile?.peso_meta} kg</div>
-                    <div style={{background:T.border,borderRadius:99,height:5,overflow:"hidden"}}>
-                      <div style={{width:Math.max(5,Math.min(100,100-((parseFloat(profile?.peso_actual||0)-parseFloat(profile?.peso_meta||0))/(parseFloat(profile?.peso_actual||1))*100)))+"%",height:"100%",background:`linear-gradient(90deg,${T.sage},${T.sageL})`,borderRadius:99,transition:"width .8s ease"}}/>
+                {/* Historial de peso */}
+                {(()=>{
+                  const pa=parseFloat(profile?.peso_actual||0),pm=parseFloat(profile?.peso_meta||0);
+                  const diff=pa-pm;
+                  const bajando=pa>=pm;
+                  const ultimos=historialPeso.slice(-14);
+                  const tendencia=ultimos.length>=2?parseFloat(ultimos[ultimos.length-1].peso)-parseFloat(ultimos[0].peso):0;
+                  const semanas=ultimos.length>=2?Math.max(1,(new Date(ultimos[ultimos.length-1].created_at)-new Date(ultimos[0].created_at))/(7*24*3600*1000)):1;
+                  const velSemanal=tendencia/semanas;
+                  const semanasAlObjetivo=velSemanal!==0&&Math.sign(velSemanal)===Math.sign(pm-pa)?Math.abs(diff/velSemanal):null;
+                  const progPct=Math.max(5,Math.min(100,100-(diff/(pa||1)*100)));
+                  return(
+                    <div style={{background:T.card,borderRadius:22,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                        <div>
+                          <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.07em",marginBottom:2}}>PESO ACTUAL</div>
+                          <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                            <div style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:600,color:T.charcoal,lineHeight:1}}>{pa.toFixed(1)}</div>
+                            <div style={{fontSize:13,color:T.textSub}}>kg</div>
+                            {ultimos.length>=2&&(<div style={{fontSize:12,fontWeight:600,color:tendencia<0?T.sage:tendencia>0?T.clay:T.textSub,marginLeft:4}}>{tendencia<0?"↓":"↑"}{Math.abs(tendencia).toFixed(1)} kg</div>)}
+                          </div>
+                          <div style={{fontSize:11,color:T.textSub,marginTop:1}}>meta {pm} kg · faltan {Math.abs(diff).toFixed(1)} kg</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                          <WeightSparkline data={ultimos} color={bajando?T.sage:T.sky} width={90} height={36}/>
+                          {!showPesoInput&&(
+                            <button onClick={()=>{setShowPesoInput(true);setNuevoPesoVal(pa.toFixed(1));}} style={{padding:"4px 10px",borderRadius:99,border:`1.5px solid ${T.sage}`,background:"transparent",fontSize:11,color:T.sageD,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>+ Registrar</button>
+                          )}
+                        </div>
+                      </div>
+                      {showPesoInput&&(
+                        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                          <input type="number" step="0.1" value={nuevoPesoVal} onChange={e=>setNuevoPesoVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&registrarPeso()} placeholder="kg" style={{flex:1,padding:"8px 12px",borderRadius:10,border:`1.5px solid ${T.sage}`,background:T.surface,fontSize:14,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif"}} autoFocus/>
+                          <button onClick={registrarPeso} style={{padding:"8px 16px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Guardar</button>
+                          <button onClick={()=>setShowPesoInput(false)} style={{padding:"8px",borderRadius:99,background:T.border,border:"none",color:T.textMid,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>✕</button>
+                        </div>
+                      )}
+                      <div style={{background:T.border,borderRadius:99,height:5,overflow:"hidden",marginBottom:4}}>
+                        <div style={{width:progPct+"%",height:"100%",background:`linear-gradient(90deg,${T.sage},${T.sageL})`,borderRadius:99,transition:"width .8s ease"}}/>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between"}}>
+                        <div style={{fontSize:10,color:T.textSub}}>{historialPeso.length} registros</div>
+                        {semanasAlObjetivo&&<div style={{fontSize:10,color:T.textSub}}>~{Math.ceil(semanasAlObjetivo)} sem al objetivo</div>}
+                        {velSemanal!==0&&ultimos.length>=2&&<div style={{fontSize:10,color:T.textSub}}>{velSemanal<0?"":"+"}{velSemanal.toFixed(2)} kg/sem</div>}
+                      </div>
                     </div>
-                    <div style={{fontSize:10,color:T.textSub,marginTop:4}}>{(parseFloat(profile?.peso_actual||0)-parseFloat(profile?.peso_meta||0)).toFixed(1)} kg por llegar</div>
+                  );
+                })()}
+
+                {/* Agua hoy */}
+                <div style={{background:T.card,borderRadius:22,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s",display:"flex",alignItems:"center",gap:16}}>
+                  <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <ProgressRing value={agua} max={8} size={64} stroke={6} color={T.sky}/>
+                    <div style={{position:"absolute",fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.sky}}>{agua}</div>
                   </div>
-                  <div style={{background:T.card,borderRadius:22,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s",display:"flex",flexDirection:"column",alignItems:"center"}}>
-                    <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.07em",marginBottom:6,alignSelf:"flex-start"}}>AGUA HOY</div>
-                    <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:6}}>
-                      <ProgressRing value={agua} max={8} size={64} stroke={6} color={T.sky}/>
-                      <div style={{position:"absolute",fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.sky}}>{agua}</div>
-                    </div>
-                    <div style={{display:"flex",gap:3,flexWrap:"wrap",justifyContent:"center"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.07em",marginBottom:6}}>AGUA HOY</div>
+                    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                       {Array.from({length:8}).map((_,i)=>(
-                        <button key={i} onClick={()=>updateAgua(Math.min(8,i+1))} style={{width:16,height:16,borderRadius:99,background:i<agua?T.sky:T.border,border:"none",cursor:"pointer",transition:"background .2s",padding:0}}/>
+                        <button key={i} onClick={()=>updateAgua(Math.min(8,i+1))} style={{width:18,height:18,borderRadius:99,background:i<agua?T.sky:T.border,border:"none",cursor:"pointer",transition:"background .2s",padding:0}}/>
                       ))}
                     </div>
+                    <div style={{fontSize:11,color:T.textSub,marginTop:5}}>{agua}/8 vasos · {agua>=8?"¡Meta cumplida! 🎉":agua>=5?"Casi llegamos":"Sigue hidratándote"}</div>
                   </div>
                 </div>
 
