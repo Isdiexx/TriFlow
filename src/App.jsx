@@ -91,29 +91,52 @@ export default function App(){
   useEffect(()=>{
     const saved=localStorage.getItem("triflow_email");if(saved)setEmail(saved);
     if(window.location.search.includes("dev")){const devUser={id:"dev-user-123",email:"dev@test.com"};setUser(devUser);loadAll(devUser.id);return;}
+
     let mounted=true;
-    let processing=false;
-    let initialized=false;
-    const fallbackTimer=setTimeout(()=>{if(mounted&&!initialized){console.warn("Auth timeout fallback - sending to auth screen");setScreen("auth");}},10000);
-    const{data:{subscription}}=supabase.auth.onAuthStateChange(async(event,session)=>{
-      console.log("Auth event:",event,"session?",!!session);
-      if(!mounted||processing)return;
-      processing=true;initialized=true;clearTimeout(fallbackTimer);
+    let loadStarted=false;
+
+    // Inicia carga con un usuario ya autenticado. El flag loadStarted
+    // evita que getSession y onAuthStateChange corran loadAll en paralelo.
+    const iniciarCarga=async(sessionUser)=>{
+      if(loadStarted)return;
+      loadStarted=true;
       try{
-        if(session?.user){
-          setUser(session.user);
-          await loadAll(session.user.id);
-          if(window.location.hash.includes("access_token")){window.history.replaceState(null,"",window.location.pathname+window.location.search);}
-        }else{
-          setUser(null);setProfile(null);setScreen("auth");
+        setUser(sessionUser);
+        await loadAll(sessionUser.id);
+        if(window.location.hash.includes("access_token")){
+          window.history.replaceState(null,"",window.location.pathname+window.location.search);
         }
       }catch(e){
-        console.error("Auth state change error:",e);
+        console.error("iniciarCarga error:",e);
         if(mounted){setUser(null);setProfile(null);setScreen("auth");}
       }
-      processing=false;
+    };
+
+    // ── Carga inicial: getSession() es inmediato y confiable.
+    // No depende de timing de eventos — resuelve directamente desde
+    // localStorage/storage del cliente sin condición de carrera.
+    supabase.auth.getSession()
+      .then(({data:{session}})=>{
+        if(!mounted)return;
+        if(session?.user)iniciarCarga(session.user);
+        else setScreen("auth");
+      })
+      .catch(()=>{if(mounted)setScreen("auth");});
+
+    // ── Cambios posteriores: solo login explícito y logout.
+    // Ignoramos INITIAL_SESSION y TOKEN_REFRESHED (ya manejados arriba).
+    const{data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
+      if(!mounted)return;
+      console.log("Auth event:",event);
+      if(event==="SIGNED_OUT"){
+        loadStarted=false;
+        setUser(null);setProfile(null);setScreen("auth");
+      }else if(event==="SIGNED_IN"&&session?.user&&!loadStarted){
+        iniciarCarga(session.user);
+      }
     });
-    return()=>{mounted=false;clearTimeout(fallbackTimer);subscription?.unsubscribe();};
+
+    return()=>{mounted=false;subscription?.unsubscribe();};
   },[]);
   useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
   useEffect(()=>{
