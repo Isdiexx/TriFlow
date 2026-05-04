@@ -82,6 +82,7 @@ export default function App(){
   const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);
   const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");
   const[entrenamientoLoading,setEntrenamientoLoading]=useState(false);const[entrenamientoError,setEntrenamientoError]=useState("");
+  const[sesionAbierta,setSesionAbierta]=useState(null);const[logsActuales,setLogsActuales]=useState({});
   const chatBottom=useRef(null);const scannerRef=useRef(null);
   const T=dark?DARK:LIGHT;
   const toggleTheme=()=>setDark(d=>!d);
@@ -154,8 +155,54 @@ export default function App(){
   const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
   const eliminarProducto=async(id)=>{await supabase.from("stock").delete().eq("id",id);setStock(p=>p.filter(s=>s.id!==id));};
   const toggleSesion=async(id,completada)=>{await supabase.from("sesiones").update({completada:!completada}).eq("id",id);setSesiones(p=>p.map(s=>s.id===id?{...s,completada:!completada}:s));};
+  const parsarEjercicios=(desc)=>{
+    if(!desc)return[];
+    return desc.split(",").map(e=>e.trim()).filter(Boolean).map(e=>{
+      const mSets=e.match(/^(.*?)\s+(\d+)[xX×](\d+)(s)?$/i);
+      const mMin=e.match(/^(.*?)\s+(\d+)\s*min$/i);
+      if(mSets)return{nombre:mSets[1].trim(),series:parseInt(mSets[2]),reps:parseInt(mSets[3]),unidad:mSets[4]?"s":"reps"};
+      if(mMin)return{nombre:mMin[1].trim(),series:1,reps:parseInt(mMin[2]),unidad:"min"};
+      return{nombre:e,series:3,reps:10,unidad:"reps"};
+    });
+  };
+  const abrirSesion=(sesionId)=>{
+    const s=sesiones.find(x=>x.id===sesionId);if(!s)return;
+    const ejercicios=parsarEjercicios(s.descripcion);
+    const logsDB=s.logs||{};
+    const initLogs={};
+    ejercicios.forEach(ej=>{
+      const prev=logsDB[ej.nombre]||[];
+      initLogs[ej.nombre]=Array.from({length:ej.series},(_,i)=>({reps:prev[i]?.reps||"",peso:prev[i]?.peso||"",done:prev[i]?.done||false}));
+    });
+    setLogsActuales(p=>({...p,[sesionId]:initLogs}));
+    setSesionAbierta(sesionId);
+  };
+  const updateLog=(sesionId,ejercicio,setIdx,field,value)=>{
+    setLogsActuales(p=>({...p,[sesionId]:{...p[sesionId],[ejercicio]:p[sesionId][ejercicio].map((s,i)=>i===setIdx?{...s,[field]:value}:s)}}));
+  };
+  const toggleSetDone=async(sesionId,ejercicio,setIdx)=>{
+    const updated={};
+    setLogsActuales(p=>{
+      const ejLogs=(p[sesionId]||{})[ejercicio]||[];
+      const newEjLogs=ejLogs.map((s,i)=>i===setIdx?{...s,done:!s.done}:s);
+      const newSesionLogs={...(p[sesionId]||{}),[ejercicio]:newEjLogs};
+      Object.assign(updated,newSesionLogs);
+      return{...p,[sesionId]:newSesionLogs};
+    });
+    setTimeout(async()=>{
+      const currentLogs=logsActuales[sesionId]||{};
+      const ejLogs=(currentLogs[ejercicio]||[]).map((s,i)=>i===setIdx?{...s,done:!s.done}:s);
+      const newLogs={...currentLogs,[ejercicio]:ejLogs};
+      await supabase.from("sesiones").update({logs:newLogs}).eq("id",sesionId);
+    },300);
+  };
+  const finalizarSesion=async(sesionId)=>{
+    const logs=logsActuales[sesionId]||{};
+    const{error}=await supabase.from("sesiones").update({completada:true,logs}).eq("id",sesionId);
+    if(!error){setSesiones(p=>p.map(s=>s.id===sesionId?{...s,completada:true,logs}:s));setSesionAbierta(null);}
+  };
   const generarMenu=async()=>{if(menuLoading)return;setMenuLoading(true);setMenuError("");try{const res=await fetch("/api/generate-menu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile,stock})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.menu)||!data.menu.length)throw new Error("Menú vacío");await supabase.from("menu_semanal").delete().eq("user_id",user.id);const rows=data.menu.map(m=>({user_id:user.id,dia:m.dia,desayuno:m.desayuno||"",almuerzo:m.almuerzo||"",snack:m.snack||"",cena:m.cena||""}));const{data:inserted,error}=await supabase.from("menu_semanal").insert(rows).select();if(error)throw error;setMenu(inserted||rows);setListaCompra(Array.isArray(data.lista_compra)?data.lista_compra:[]);}catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}setMenuLoading(false);};
-  const generarEntrenamiento=async()=>{if(entrenamientoLoading)return;setEntrenamientoLoading(true);setEntrenamientoError("");try{const res=await fetch("/api/generate-training",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.sesiones)||!data.sesiones.length)throw new Error("Sin sesiones generadas");await supabase.from("sesiones").delete().eq("user_id",user.id);const rows=data.sesiones.map(s=>({user_id:user.id,dia:s.dia,grupo:`Sem ${s.semana||1} · ${s.grupo}`,completada:false}));const{data:inserted,error}=await supabase.from("sesiones").insert(rows).select();if(error)throw error;setSesiones(inserted||rows);}catch(e){console.error("generarEntrenamiento error:",e);setEntrenamientoError(e.message||"Error generando plan");}setEntrenamientoLoading(false);};
+  const generarEntrenamiento=async()=>{if(entrenamientoLoading)return;setEntrenamientoLoading(true);setEntrenamientoError("");try{const res=await fetch("/api/generate-training",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.sesiones)||!data.sesiones.length)throw new Error("Sin sesiones generadas");await supabase.from("sesiones").delete().eq("user_id",user.id);const rows=data.sesiones.map(s=>({user_id:user.id,dia:s.dia,grupo:`Sem ${s.semana||1} · ${s.grupo}`,descripcion:s.descripcion||"",completada:false,logs:{}}));const{data:inserted,error}=await supabase.from("sesiones").insert(rows).select();if(error)throw error;setSesiones(inserted||rows);}catch(e){console.error("generarEntrenamiento error:",e);setEntrenamientoError(e.message||"Error generando plan");}setEntrenamientoLoading(false);};
   const agregarSugerencia=async(item,idx)=>{const payload={user_id:user.id,nombre:item.nombre,cantidad:parseFloat(item.cantidad)||0,unidad:item.unidad||"g"};const{data,error}=await supabase.from("stock").insert(payload).select().single();if(error){setMenuError(error.message);return;}setStock(p=>[...p,data]);setListaCompra(p=>p.filter((_,i)=>i!==idx));};
   const lookupProductByBarcode=async(barcode)=>{try{const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);if(!res.ok)return null;const data=await res.json();if(!data.product)return null;return{nombre:data.product.product_name||barcode,imagen:data.product.image_front_url||null,marca:data.product.brands||"",energia:data.product.nutriments?.energy_kcal_100g||null,proteinas:data.product.nutriments?.proteins_100g||null,grasas:data.product.nutriments?.fat_100g||null,carbohidratos:data.product.nutriments?.carbohydrates_100g||null};}catch(e){console.error("Open Food Facts error:",e);return null;}};
   const handleScanSuccess=async(decodedText)=>{setScannedCode(decodedText);setScanLoading(true);const product=await lookupProductByBarcode(decodedText);setScannedProduct(product||{nombre:decodedText,cantidad:"1",unidad:"un",imagen:null});setScanLoading(false);};
@@ -597,77 +644,182 @@ export default function App(){
           {/* ═══ LA TRANSFORMACIÓN ═══ */}
           {tab==="entrena"&&(
             <div style={{paddingBottom:16}}>
-              <div style={{padding:"18px 20px 14px",background:T.surface,borderBottom:`1px solid ${T.border}`,transition:"all .4s"}}>
-                <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:600,color:T.charcoal}}>La Transformación <span style={{fontStyle:"italic",color:T.violet}}>✦</span></div>
-                <div style={{fontSize:13,color:T.textSub,marginTop:2}}>Tu plan de entrenamiento mensual</div>
-                {sesiones.length>0&&(
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
-                    {[[`${sesiones.filter(s=>s.completada).length}/${sesiones.length}`,"Sesiones","completadas"],[`${sesiones.length?Math.round((sesiones.filter(s=>s.completada).length/sesiones.length)*100):0}%`,"Adherencia","al plan"],["4 sem","Progreso","del plan"]].map(([v,k,s])=>(
-                      <div key={k} style={{background:T.bg,borderRadius:12,padding:"10px 8px",textAlign:"center",transition:"background .4s"}}>
-                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.violet}}>{v}</div>
-                        <div style={{fontSize:11,color:T.charcoal,fontWeight:500}}>{k}</div>
-                        <div style={{fontSize:10,color:T.textSub}}>{s}</div>
+              {sesionAbierta?(()=>{
+                /* ═══ VISTA DETALLADA DE SESIÓN (HARBIZ-STYLE) ═══ */
+                const s=sesiones.find(x=>x.id===sesionAbierta);
+                if(!s){setSesionAbierta(null);return null;}
+                const ejercicios=parsarEjercicios(s.descripcion);
+                const semNum=parseInt((s.grupo||"").match(/\d+/)?.[0]||"1");
+                const grupoNombre=(s.grupo||"").replace(/^Sem \d+ · /,"");
+                const faseNombre=["Activación","Volumen","Intensidad","Descarga"][semNum-1]||"";
+                const logs=logsActuales[s.id]||{};
+                const totalSeries=ejercicios.reduce((acc,ej)=>acc+ej.series,0);
+                const seriesHechas=Object.values(logs).flatMap(x=>x).filter(x=>x.done).length;
+                return(<>
+                  {/* Header sesión */}
+                  <div style={{padding:"14px 18px 14px",background:T.surface,borderBottom:`1px solid ${T.border}`,position:"sticky",top:0,zIndex:10,transition:"all .4s"}}>
+                    <button onClick={()=>setSesionAbierta(null)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:T.violet,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,padding:0,marginBottom:10}}>← Volver al plan</button>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                      <div>
+                        <div style={{fontSize:11,color:T.violet,letterSpacing:"0.07em",marginBottom:2}}>SEMANA {semNum} · {faseNombre.toUpperCase()}</div>
+                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:600,color:T.charcoal}}>{s.dia}</div>
+                        <div style={{fontSize:13,color:T.textSub,marginTop:1}}>{grupoNombre}</div>
                       </div>
-                    ))}
+                      {totalSeries>0&&<div style={{textAlign:"right",flexShrink:0}}>
+                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:600,color:seriesHechas===totalSeries?T.sage:T.violet}}>{seriesHechas}/{totalSeries}</div>
+                        <div style={{fontSize:10,color:T.textSub}}>series</div>
+                      </div>}
+                    </div>
+                    {totalSeries>0&&<div style={{marginTop:10,background:T.border,borderRadius:99,height:4,overflow:"hidden"}}>
+                      <div style={{width:`${(seriesHechas/totalSeries)*100}%`,height:"100%",background:seriesHechas===totalSeries?T.sage:T.violet,borderRadius:99,transition:"width .4s ease"}}/>
+                    </div>}
                   </div>
-                )}
-              </div>
-              <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:12}} className="mode-in">
-                {entrenamientoError&&<div style={{fontSize:12,color:T.clay,background:T.clay+"18",padding:12,borderRadius:12}}>{entrenamientoError}</div>}
-                {sesiones.length===0?(
-                  <div style={{background:T.card,borderRadius:20,padding:"32px 24px",border:`1px solid ${T.border}`,textAlign:"center"}}>
-                    <div style={{fontSize:40,marginBottom:14}}>💪</div>
-                    <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:T.charcoal,marginBottom:8}}>Sin plan aún</div>
-                    <div style={{fontSize:13,color:T.textMid,marginBottom:18,lineHeight:1.6}}>Genera tu primer mesociclo personalizado de 4 semanas.</div>
-                    <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{padding:"13px 28px",borderRadius:99,background:entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",fontSize:14,cursor:entrenamientoLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>{entrenamientoLoading?"Generando...":"✦ Generar Mesociclo"}</button>
-                  </div>
-                ):(<>
-                  {/* Selector semanas */}
-                  <div style={{display:"flex",gap:8}}>
-                    {[1,2,3,4].map(n=>{
-                      const ss=sesPorSemana(n);const completa=ss.length>0&&ss.every(s=>s.completada);
-                      return(<button key={n} onClick={()=>setSemanaActiva(n)} style={{flex:1,padding:"10px 6px",borderRadius:14,border:`1.5px solid ${semanaActiva===n?T.violet:T.border}`,background:semanaActiva===n?T.violet+"22":"transparent",color:semanaActiva===n?T.violet:T.textMid,fontSize:12,fontWeight:semanaActiva===n?600:400,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s",textAlign:"center"}}>
-                        Sem {n}{completa&&<div style={{fontSize:9,color:T.sage,marginTop:1}}>✓ ok</div>}
-                      </button>);
-                    })}
-                  </div>
-                  {/* Info semana */}
-                  <div style={{background:T.violet+"14",borderRadius:18,padding:"12px 16px",border:`1px solid ${T.violet}22`}}>
-                    <div style={{fontSize:11,color:T.violet,letterSpacing:"0.07em",marginBottom:3}}>SEMANA {semanaActiva}</div>
-                    <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,color:T.charcoal}}>Semana de {["Activación","Volumen","Intensidad","Descarga"][semanaActiva-1]}</div>
-                  </div>
-                  {/* Sesiones */}
-                  {sesPorSemana(semanaActiva).length>0?sesPorSemana(semanaActiva).map(s=>(
-                    <div key={s.id} onClick={()=>toggleSesion(s.id,s.completada)} style={{background:T.card,borderRadius:20,padding:"15px 16px",border:`1.5px solid ${s.completada?T.violet+"44":T.border}`,cursor:"pointer",transition:"all .25s",position:"relative",overflow:"hidden"}}>
-                      {s.completada&&<div style={{position:"absolute",top:0,left:0,width:4,height:"100%",background:T.violet,borderRadius:"4px 0 0 4px"}}/>}
-                      <div style={{display:"flex",alignItems:"center",gap:12}}>
-                        <div style={{width:42,height:42,borderRadius:14,background:s.completada?T.violet+"22":T.bg,border:`1.5px solid ${s.completada?T.violet+"66":T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,transition:"all .3s"}}>{s.completada?"✓":"🏋️"}</div>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:15,fontWeight:600,color:s.completada?T.textSub:T.charcoal}}>{s.dia}</div>
-                          <div style={{fontSize:12,color:s.completada?T.muted:T.violet,marginTop:2,fontWeight:500}}>{s.grupo?.replace(/^Sem \d+ · /,"")}</div>
+                  {/* Ejercicios */}
+                  <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:12}} className="fade-in">
+                    {ejercicios.length===0?(
+                      <div style={{background:T.card,borderRadius:18,padding:"28px 20px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+                        <div style={{fontSize:32,marginBottom:8}}>🔄</div>
+                        <div style={{fontSize:14,color:T.charcoal,marginBottom:6,fontWeight:500}}>Esta sesión no tiene ejercicios detallados</div>
+                        <div style={{fontSize:12,color:T.textSub,marginBottom:16,lineHeight:1.6}}>Regenera el mesociclo para obtener ejercicios con series y repeticiones.</div>
+                        <button onClick={()=>{setSesionAbierta(null);generarEntrenamiento();}} style={{padding:"10px 20px",borderRadius:99,background:T.violet,border:"none",color:"#fff",fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>↻ Regenerar mesociclo</button>
+                      </div>
+                    ):ejercicios.map((ej,ejIdx)=>{
+                      const ejLogs=logs[ej.nombre]||Array.from({length:ej.series},()=>({reps:"",peso:"",done:false}));
+                      const allDone=ejLogs.every(s=>s.done);
+                      const someReps=ej.unidad==="reps";
+                      return(
+                        <div key={ejIdx} style={{background:T.card,borderRadius:18,padding:"14px 16px",border:`1.5px solid ${allDone?T.violet+"55":T.border}`,transition:"all .3s",overflow:"hidden",position:"relative"}}>
+                          {allDone&&<div style={{position:"absolute",top:0,left:0,width:3,height:"100%",background:T.violet}}/>}
+                          {/* Cabecera ejercicio */}
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                            <div style={{paddingLeft:allDone?8:0,transition:"padding .3s"}}>
+                              <div style={{fontSize:15,fontWeight:600,color:allDone?T.textSub:T.charcoal,transition:"color .3s"}}>{ej.nombre}</div>
+                              <div style={{fontSize:11,color:T.violet,marginTop:2,fontWeight:500}}>
+                                {ej.series} {ej.series===1?"serie":"series"} × {ej.reps}{ej.unidad==="reps"?" reps":ej.unidad==="s"?" seg":" min"}
+                              </div>
+                            </div>
+                            {allDone&&<div style={{width:28,height:28,borderRadius:99,background:T.violet,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,flexShrink:0}}>✓</div>}
+                          </div>
+                          {/* Headers columnas */}
+                          <div style={{display:"grid",gridTemplateColumns:"32px 1fr 1fr 36px",gap:6,marginBottom:5,paddingLeft:allDone?8:0}}>
+                            {["#",someReps?"Reps":"Seg","Peso kg",""].map((h,i)=>(
+                              <div key={i} style={{fontSize:10,color:T.textSub,textAlign:"center",letterSpacing:"0.05em",fontWeight:500}}>{h}</div>
+                            ))}
+                          </div>
+                          {/* Filas de series */}
+                          {Array.from({length:ej.series}).map((_,setIdx)=>{
+                            const setLog=ejLogs[setIdx]||{reps:"",peso:"",done:false};
+                            const inputStyle={padding:"8px 6px",borderRadius:9,border:`1.5px solid ${setLog.done?T.violet+"66":T.border}`,background:setLog.done?T.violet+"0d":T.surface,fontSize:14,color:setLog.done?T.textSub:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif",textAlign:"center",width:"100%",transition:"all .2s"};
+                            return(
+                              <div key={setIdx} style={{display:"grid",gridTemplateColumns:"32px 1fr 1fr 36px",gap:6,marginBottom:6,alignItems:"center",paddingLeft:allDone?8:0,transition:"padding .3s"}}>
+                                <div style={{fontSize:12,fontWeight:700,color:setLog.done?T.violet:T.muted,textAlign:"center"}}>{setIdx+1}</div>
+                                <input type="number" inputMode="decimal" value={setLog.reps} onChange={e=>updateLog(s.id,ej.nombre,setIdx,"reps",e.target.value)} placeholder={String(ej.reps)} style={inputStyle}/>
+                                <input type="number" inputMode="decimal" step="0.5" value={setLog.peso} onChange={e=>updateLog(s.id,ej.nombre,setIdx,"peso",e.target.value)} placeholder="—" style={inputStyle}/>
+                                <button onClick={()=>toggleSetDone(s.id,ej.nombre,setIdx)} style={{width:36,height:36,borderRadius:99,background:setLog.done?T.violet:T.border,border:"none",color:setLog.done?"#fff":T.muted,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .25s",flexShrink:0}}>✓</button>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div style={{fontSize:20,color:T.muted}}>›</div>
+                      );
+                    })}
+                    {/* Finalizar sesión */}
+                    <button onClick={()=>finalizarSesion(sesionAbierta)} style={{padding:"16px",borderRadius:99,background:s.completada?T.muted:seriesHechas===totalSeries&&totalSeries>0?T.sage:T.violet,border:"none",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:4,transition:"background .4s"}}>
+                      {s.completada?"✓ Sesión completada":seriesHechas===totalSeries&&totalSeries>0?"✓ ¡Todas las series! Finalizar":"Finalizar sesión →"}
+                    </button>
+                  </div>
+                </>);
+              })():(
+                /* ═══ VISTA LISTA DE SESIONES ═══ */
+                <>
+                  <div style={{padding:"18px 20px 14px",background:T.surface,borderBottom:`1px solid ${T.border}`,transition:"all .4s"}}>
+                    <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:600,color:T.charcoal}}>La Transformación <span style={{fontStyle:"italic",color:T.violet}}>✦</span></div>
+                    <div style={{fontSize:13,color:T.textSub,marginTop:2}}>Tu plan de entrenamiento mensual</div>
+                    {sesiones.length>0&&(
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
+                        {[[`${sesiones.filter(s=>s.completada).length}/${sesiones.length}`,"Sesiones","completadas"],[`${sesiones.length?Math.round((sesiones.filter(s=>s.completada).length/sesiones.length)*100):0}%`,"Adherencia","al plan"],["4 sem","Progreso","del plan"]].map(([v,k,sb])=>(
+                          <div key={k} style={{background:T.bg,borderRadius:12,padding:"10px 8px",textAlign:"center",transition:"background .4s"}}>
+                            <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.violet}}>{v}</div>
+                            <div style={{fontSize:11,color:T.charcoal,fontWeight:500}}>{k}</div>
+                            <div style={{fontSize:10,color:T.textSub}}>{sb}</div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  )):(
-                    <div style={{background:T.card,borderRadius:18,padding:"24px 20px",border:`1px solid ${T.border}`,textAlign:"center"}}>
-                      <div style={{fontSize:28,marginBottom:8}}>🔒</div>
-                      <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,color:T.charcoal,marginBottom:4}}>Sin sesiones en esta semana</div>
-                      <div style={{fontSize:12,color:T.textSub,lineHeight:1.6}}>Regenera el mesociclo para obtener sesiones.</div>
-                    </div>
-                  )}
-                  {/* Regenerar */}
-                  <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{padding:"13px",borderRadius:99,border:`1.5px solid ${T.violet}`,background:"transparent",color:T.violet,fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500,cursor:entrenamientoLoading?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
-                    {entrenamientoLoading?"Regenerando...":"↻ Regenerar mesociclo con IA"}
-                  </button>
-                </>)}
-              </div>
+                    )}
+                  </div>
+                  <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:12}} className="mode-in">
+                    {entrenamientoError&&<div style={{fontSize:12,color:T.clay,background:T.clay+"18",padding:12,borderRadius:12}}>{entrenamientoError}</div>}
+                    {sesiones.length===0?(
+                      <div style={{background:T.card,borderRadius:20,padding:"32px 24px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+                        <div style={{fontSize:40,marginBottom:14}}>💪</div>
+                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:T.charcoal,marginBottom:8}}>Sin plan aún</div>
+                        <div style={{fontSize:13,color:T.textMid,marginBottom:18,lineHeight:1.6}}>Genera tu primer mesociclo personalizado de 4 semanas.</div>
+                        <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{padding:"13px 28px",borderRadius:99,background:entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",fontSize:14,cursor:entrenamientoLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>{entrenamientoLoading?"Generando...":"✦ Generar Mesociclo"}</button>
+                      </div>
+                    ):(<>
+                      {/* Selector semanas */}
+                      <div style={{display:"flex",gap:8}}>
+                        {[1,2,3,4].map(n=>{
+                          const ss=sesPorSemana(n);const completa=ss.length>0&&ss.every(s=>s.completada);
+                          return(<button key={n} onClick={()=>setSemanaActiva(n)} style={{flex:1,padding:"10px 6px",borderRadius:14,border:`1.5px solid ${semanaActiva===n?T.violet:T.border}`,background:semanaActiva===n?T.violet+"22":"transparent",color:semanaActiva===n?T.violet:T.textMid,fontSize:12,fontWeight:semanaActiva===n?600:400,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s",textAlign:"center"}}>
+                            Sem {n}{completa&&<div style={{fontSize:9,color:T.sage,marginTop:1}}>✓</div>}
+                          </button>);
+                        })}
+                      </div>
+                      {/* Info fase semana */}
+                      <div style={{background:T.violet+"14",borderRadius:18,padding:"12px 16px",border:`1px solid ${T.violet}22`}}>
+                        <div style={{fontSize:11,color:T.violet,letterSpacing:"0.07em",marginBottom:3}}>SEMANA {semanaActiva}</div>
+                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,color:T.charcoal}}>Semana de {["Activación","Volumen","Intensidad","Descarga"][semanaActiva-1]}</div>
+                      </div>
+                      {/* Cards de sesiones */}
+                      {sesPorSemana(semanaActiva).length>0?sesPorSemana(semanaActiva).map(s=>{
+                        const ejercicios=parsarEjercicios(s.descripcion);
+                        const sLogs=s.logs||{};
+                        const totalSer=ejercicios.reduce((acc,ej)=>acc+ej.series,0);
+                        const hechas=Object.values(sLogs).flatMap(x=>x).filter(x=>x.done).length;
+                        return(
+                          <div key={s.id} style={{background:T.card,borderRadius:20,border:`1.5px solid ${s.completada?T.violet+"55":T.border}`,overflow:"hidden",transition:"all .25s",position:"relative"}}>
+                            {s.completada&&<div style={{position:"absolute",top:0,left:0,width:4,height:"100%",background:T.violet}}/>}
+                            <div style={{padding:"15px 16px",display:"flex",alignItems:"center",gap:12}}>
+                              <div style={{width:44,height:44,borderRadius:14,background:s.completada?T.violet+"22":T.bg,border:`1.5px solid ${s.completada?T.violet+"66":T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,flexShrink:0,transition:"all .3s"}}>{s.completada?"✓":"🏋️"}</div>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:15,fontWeight:600,color:s.completada?T.textSub:T.charcoal}}>{s.dia}</div>
+                                <div style={{fontSize:12,color:s.completada?T.muted:T.violet,marginTop:1,fontWeight:500}}>{(s.grupo||"").replace(/^Sem \d+ · /,"")}</div>
+                                <div style={{fontSize:11,color:T.textSub,marginTop:2}}>
+                                  {ejercicios.length>0?`${ejercicios.length} ejercicios${totalSer>0?` · ${hechas}/${totalSer} series`:""}`:s.descripcion?"Ver ejercicios":"Sin detalle — regenerar"}
+                                </div>
+                              </div>
+                              <button onClick={()=>abrirSesion(s.id)} style={{padding:"9px 16px",borderRadius:99,background:s.completada?T.border:T.violet,border:"none",color:s.completada?T.textMid:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0,transition:"all .2s"}}>
+                                {s.completada?"Ver":"Iniciar →"}
+                              </button>
+                            </div>
+                            {totalSer>0&&hechas>0&&!s.completada&&(
+                              <div style={{height:3,background:T.border}}>
+                                <div style={{width:`${(hechas/totalSer)*100}%`,height:"100%",background:T.violet,transition:"width .4s ease"}}/>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }):(
+                        <div style={{background:T.card,borderRadius:18,padding:"24px 20px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+                          <div style={{fontSize:28,marginBottom:8}}>🔒</div>
+                          <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,color:T.charcoal,marginBottom:4}}>Sin sesiones en esta semana</div>
+                          <div style={{fontSize:12,color:T.textSub,lineHeight:1.6}}>Regenera el mesociclo para obtener sesiones.</div>
+                        </div>
+                      )}
+                      {/* Regenerar */}
+                      <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{padding:"13px",borderRadius:99,border:`1.5px solid ${T.violet}`,background:"transparent",color:T.violet,fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500,cursor:entrenamientoLoading?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
+                        {entrenamientoLoading?"Regenerando...":"↻ Regenerar mesociclo con IA"}
+                      </button>
+                    </>)}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {/* ═══ ASISTENTE ═══ */}
           {tab==="asistente"&&(
-            <div style={{display:"flex",flexDirection:"column",height:"calc(780px - 104px)"}}>
+            <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 104px)"}}>
               <div style={{padding:"16px 18px 12px",background:T.surface,borderBottom:`1px solid ${T.border}`,flexShrink:0,transition:"all .4s"}}>
                 <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:600,color:T.charcoal}}>Tu asistente <span style={{fontStyle:"italic",color:T.sage}}>✦</span></div>
                 <div style={{fontSize:12,color:T.textSub,marginTop:2}}>IA personalizada con tu perfil y despensa</div>
