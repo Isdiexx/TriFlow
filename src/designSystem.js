@@ -28,43 +28,54 @@ export const BORDER_RADIUS = {
 // ═══════════════════════════════════════════════════════════
 // TYPOGRAPHY SCALE
 // ═══════════════════════════════════════════════════════════
+export const FONTS = {
+  display: "'Space Grotesk',sans-serif",
+  serif: "'Playfair Display','Times New Roman',serif",
+  body: "'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif",
+  mono: "'JetBrains Mono',ui-monospace,monospace",
+};
+
 export const TYPOGRAPHY = {
   h1: {
     fontSize: 32,
     fontWeight: 600,
-    fontFamily: "'Playfair Display',serif",
+    fontFamily: FONTS.display,
+    letterSpacing: "-0.035em",
     lineHeight: 1.2,
   },
   h2: {
     fontSize: 24,
     fontWeight: 600,
-    fontFamily: "'Playfair Display',serif",
+    fontFamily: FONTS.display,
+    letterSpacing: "-0.025em",
     lineHeight: 1.3,
   },
   h3: {
     fontSize: 20,
     fontWeight: 600,
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: FONTS.display,
+    letterSpacing: "-0.02em",
     lineHeight: 1.4,
   },
   body: {
     fontSize: 14,
     fontWeight: 400,
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: FONTS.body,
     lineHeight: 1.5,
   },
   small: {
     fontSize: 12,
     fontWeight: 400,
-    fontFamily: "'DM Sans',sans-serif",
+    fontFamily: FONTS.body,
     lineHeight: 1.4,
   },
   label: {
     fontSize: 11,
     fontWeight: 500,
-    fontFamily: "'DM Sans',sans-serif",
-    letterSpacing: "0.07em",
+    fontFamily: FONTS.mono,
+    letterSpacing: "0.04em",
     lineHeight: 1.3,
+    textTransform: "uppercase",
   },
 };
 
