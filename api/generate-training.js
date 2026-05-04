@@ -1,3 +1,11 @@
+const HORARIO_DIAS = {
+  2: ["Lunes","Jueves"],
+  3: ["Lunes","Miércoles","Viernes"],
+  4: ["Lunes","Martes","Jueves","Viernes"],
+  5: ["Lunes","Martes","Miércoles","Jueves","Viernes"],
+  6: ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"],
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -13,16 +21,49 @@ export default async function handler(req, res) {
   const edadTexto = profile.edad || 30;
   const pais = profile.pais || 'Chile';
 
+  // Días de entrenamiento por semana (2-6, default 3)
+  const diasSemana = Math.min(6, Math.max(2, parseInt(profile.dias_entrenamiento) || 3));
+  const diasPlan = HORARIO_DIAS[diasSemana];
+  const totalSesiones = 4 * diasSemana;
+  const diasStr = diasPlan.join(', ');
+
+  // Orden de sesiones: Sem1·Día1, Sem1·Día2... Sem4·DíaN
+  const ordenSesiones = [1,2,3,4].flatMap(sem =>
+    diasPlan.map(dia => `Sem${sem}·${dia}`)
+  ).join(', ');
+
+  // Ejemplo dinámico del formato esperado (solo primeras 2 entradas)
+  const exEj1 = diasPlan[0];
+  const exEj2 = diasPlan[1] || diasPlan[0];
+  const ejemploJson = `{"sesiones":[{"semana":1,"dia":"${exEj1}","grupo":"Cuerpo Completo","descripcion":"Sentadilla 4x10, Peso muerto rumano 3x10, Press de banca 3x10, Remo con barra 3x10, Plancha frontal 3x45s"},{"semana":1,"dia":"${exEj2}","grupo":"Cuerpo Completo","descripcion":"Sentadilla búlgara 3x12, Peso muerto 3x10, Press inclinado 3x10, Remo invertido 3x12"},...(${totalSesiones} sesiones totales)]}`;
+
+  // Recomendaciones de estructura según frecuencia
+  let estructuraDias = '';
+  if (diasSemana === 2) {
+    estructuraDias = `Con 2 días: sesiones de cuerpo completo enfocadas en los movimientos más eficientes. Prioriza compuestos (sentadilla, press, jalón/remo). Añade trabajo cardiovascular al final de cada sesión.`;
+  } else if (diasSemana === 3) {
+    estructuraDias = `Con 3 días: cuerpo completo en cada sesión con variación de estímulos. Día 1: dominante pierna+push, Día 2: dominante cadera+pull, Día 3: mixto+core.`;
+  } else if (diasSemana === 4) {
+    estructuraDias = `Con 4 días: divide en Upper/Lower o Push/Pull. Lunes-Martes: tren superior e inferior. Jueves-Viernes: repetición con variaciones. Mayor volumen por sesión.`;
+  } else if (diasSemana === 5) {
+    estructuraDias = `Con 5 días: puede ser PPL (Push/Pull/Legs) + 2 sesiones extra, o Upper/Lower 2x + Full Body. Distribuye el volumen para evitar sobreentrenamiento.`;
+  } else if (diasSemana === 6) {
+    estructuraDias = `Con 6 días: PPL repetido (Push A/B, Pull A/B, Legs A/B) o Upper/Lower 3x. Deja al menos 1 día de descanso completo. Gestiona bien la fatiga acumulada en Sem 3.`;
+  }
+
   const system = `Eres un entrenador personal certificado especializado en programación de fuerza y acondicionamiento.
 
 Perfil del usuario:
 - Nombre: ${profile.nombre || 'Usuario'}
-- País: ${pais} (usa vocabulario local: en Chile "polera"/"calza", en Argentina "remera"/"calza", en México "playera"/"licra", etc. Usa términos de ejercicios universales pero el lenguaje natural debe sentirse del país)
+- País: ${pais}
 - Objetivo: ${objetivoTexto}
 - Peso actual: ${profile.peso_actual}kg, Meta: ${profile.peso_meta}kg
 - Edad: ${edadTexto} años
+- Días de entrenamiento disponibles: ${diasSemana} días por semana (${diasStr})
 
-Genera un mesociclo de 4 semanas (12 sesiones, 3 días por semana: Lunes, Miércoles, Viernes) con la siguiente estructura:
+═══ ESTRUCTURA DEL MESOCICLO ═══
+Genera un mesociclo de 4 semanas (${totalSesiones} sesiones en total, ${diasSemana} días por semana).
+Días de entrenamiento de este usuario: ${diasStr}
 
 SEMANA 1 - ACTIVACIÓN:
 - Enfoque en técnica, movimientos fundamentales
@@ -48,7 +89,10 @@ SEMANA 4 - DESCARGA:
 - Descanso: 60 segundos entre series
 - Intensidad: 60-70% del máximo estimado
 
-Personalización por objetivo:
+═══ ESTRUCTURA POR FRECUENCIA ═══
+${estructuraDias}
+
+═══ PERSONALIZACIÓN POR OBJETIVO ═══
 ${objetivoTexto.includes('bajar') ? `
 - Incluye trabajo cardiovascular (2-3 minutos al final o entre ejercicios)
 - Énfasis en volumen moderado con poco descanso (metabolismo elevado)
@@ -68,13 +112,14 @@ ${objetivoTexto.includes('rendimiento') ? `
 - Variedad en intensidades y volúmenes
 ` : ''}
 
-Para cada sesión, proporciona:
-- Día de la semana
-- Grupo muscular principal
-- Descripción detallada: lista de 4-6 ejercicios con sets x reps
+═══ REGLAS DE GENERACIÓN ═══
+- Genera EXACTAMENTE ${totalSesiones} sesiones, en este orden: ${ordenSesiones}
+- Para cada sesión: día de la semana, grupo muscular principal, 4-6 ejercicios con sets×reps
+- NO repitas el mismo grupo de ejercicios idéntico en la misma semana
+- Responde SOLO con JSON válido, SIN markdown, SIN texto adicional
 
-Responde SOLO con JSON válido, SIN markdown, SIN texto adicional. Formato exacto:
-{"sesiones":[{"semana":1,"dia":"Lunes","grupo":"Cuerpo Completo","descripcion":"Sentadilla 4x10, Peso muerto rumano 3x10, Press de banca 3x10, Remo con barra 3x10, Plancha frontal 3x45s"},{"semana":1,"dia":"Miércoles","grupo":"Cuerpo Completo","descripcion":"Sentadilla búlgara 3x12, Peso muerto 3x10, Press inclinado 3x10, Remo invertido 3x12, Bicicleta 3min"},{"semana":1,"dia":"Viernes","grupo":"Cuerpo Completo","descripcion":"Leg press 4x12, Hiperextensiones 3x12, Press militar 3x10, Jalón lat 3x12, Core: Dead bug 3x10"},{"semana":2,"dia":"Lunes","grupo":"Cuerpo Completo","descripcion":"Sentadilla 4x10, Peso muerto rumano 4x10, Press de banca 4x10, Remo con barra 4x10, Plancha frontal 3x50s"},{"semana":2,"dia":"Miércoles","grupo":"Cuerpo Completo","descripcion":"Sentadilla búlgara 4x10, Peso muerto 4x10, Press inclinado 4x10, Remo invertido 4x10, Bicicleta 4min"},{"semana":2,"dia":"Viernes","grupo":"Cuerpo Completo","descripcion":"Leg press 4x10, Hiperextensiones 4x10, Press militar 4x10, Jalón lat 4x10, Core: Plancha lateral 3x40s cada lado"},{"semana":3,"dia":"Lunes","grupo":"Cuerpo Completo","descripcion":"Sentadilla 5x6, Peso muerto rumano 4x8, Press de banca 4x8, Remo con barra 4x8, Plancha frontal 3x60s"},{"semana":3,"dia":"Miércoles","grupo":"Cuerpo Completo","descripcion":"Sentadilla búlgara 4x8, Peso muerto 5x6, Press inclinado 4x8, Remo invertido 4x8, Bicicleta 5min intenso"},{"semana":3,"dia":"Viernes","grupo":"Cuerpo Completo","descripcion":"Leg press 5x8, Hiperextensiones 4x8, Press militar 4x8, Jalón lat 4x8, Core: Ab wheel 3x8"},{"semana":4,"dia":"Lunes","grupo":"Recuperación","descripcion":"Sentadilla goblet 3x12, Peso muerto rumano 3x12, Push-ups 3x12, Remo TRX 3x12, Movilidad 10min"},{"semana":4,"dia":"Miércoles","grupo":"Recuperación","descripcion":"Step-ups 3x12, Caminata con peso 10min, Press con mancuernas 3x12, Remo con mancuernas 3x12, Yoga 10min"},{"semana":4,"dia":"Viernes","grupo":"Recuperación","descripcion":"Sentadilla Smith 3x12, Extensor de caderas 3x12, Flexiones inclinadas 3x12, Remo bajo 3x12, Estiramiento 10min"}]}`;
+Formato (continúa hasta las ${totalSesiones} sesiones):
+${ejemploJson}`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -86,9 +131,9 @@ Responde SOLO con JSON válido, SIN markdown, SIN texto adicional. Formato exact
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
+        max_tokens: 5000,
         system,
-        messages: [{ role: 'user', content: 'Genera mi mesociclo de entrenamiento de 4 semanas ahora.' }]
+        messages: [{ role: 'user', content: `Genera mi mesociclo de ${diasSemana} días por semana, 4 semanas (${totalSesiones} sesiones totales): ${diasStr}.` }]
       })
     });
 
@@ -112,6 +157,7 @@ Responde SOLO con JSON válido, SIN markdown, SIN texto adicional. Formato exact
       return res.status(500).json({ error: 'JSON sin array de sesiones' });
     }
 
+    console.log(`[generate-training] ${diasSemana} días/sem → ${parsed.sesiones.length} sesiones generadas`);
     return res.status(200).json({ sesiones: parsed.sesiones });
   } catch (e) {
     console.error('generate-training error:', e.message);

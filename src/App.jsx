@@ -73,7 +73,7 @@ export default function App(){
   const[tab,setTab]=useState("inicio");
   const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loading,setLoading]=useState(false);const[error,setError]=useState("");
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
-  const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile"});
+  const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile",dias_entrenamiento:3});
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
   const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");
   const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
@@ -325,6 +325,15 @@ export default function App(){
         <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.07em",marginBottom:8}}>RESTRICCIONES (opcional)</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:24}}>
           {["Sin lactosa","Sin gluten","Vegano","Vegetariano"].map(r=>{const s=ob.restricciones.includes(r);return<button key={r} onClick={()=>setOb({...ob,restricciones:s?ob.restricciones.filter(x=>x!==r):[...ob.restricciones,r]})} style={{padding:"7px 14px",borderRadius:99,border:`1.5px solid ${s?T.sand:T.border}`,background:s?T.sand+"22":"transparent",color:s?T.sand:T.textMid,cursor:"pointer",fontSize:13,fontFamily:"'DM Sans',sans-serif"}}>{r}</button>;})}
+        </div>
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.07em",marginBottom:10}}>DÍAS DE ENTRENAMIENTO POR SEMANA</div>
+          <div style={{display:"flex",gap:8}}>
+            {[2,3,4,5,6].map(d=>{const a=(ob.dias_entrenamiento||3)===d;return(
+              <button key={d} onClick={()=>setOb({...ob,dias_entrenamiento:d})} style={{flex:1,padding:"12px 0",borderRadius:12,border:`2px solid ${a?T.violet:T.border}`,background:a?T.violet+"18":"transparent",color:a?T.violet:T.textMid,fontWeight:a?700:400,cursor:"pointer",fontSize:17,transition:"all .2s",fontFamily:"'DM Sans',sans-serif"}}>{d}</button>
+            );})}
+          </div>
+          <div style={{fontSize:11,color:T.textSub,marginTop:6,textAlign:"center"}}>días por semana</div>
         </div>
         <button onClick={saveProfile} disabled={loading||!ob.nombre||!ob.peso_actual} style={btn(ob.nombre&&ob.peso_actual&&!loading?T.sage:T.muted)}>{loading?"Guardando...":"Comenzar mi cambio →"}</button>
       </div>
@@ -922,6 +931,20 @@ export default function App(){
                   <select value={profile?.pais||"Chile"} onChange={async e=>{const np=e.target.value;setProfile(p=>({...p,pais:np}));await supabase.from("profiles").update({pais:np}).eq("id",user.id);}} style={{padding:"7px 10px",borderRadius:10,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:13,color:T.charcoal,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none"}}>
                     {PAISES.map(p=>(<option key={p.n} value={p.n}>{p.f}  {p.n}</option>))}
                   </select>
+                </div>
+                <div style={{background:T.card,borderRadius:16,padding:"13px 16px",border:`1px solid ${T.border}`,marginBottom:10,transition:"all .4s"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>Días de entrenamiento</div>
+                      <div style={{fontSize:12,color:T.textSub,marginTop:1}}>Sesiones por semana para tu mesociclo</div>
+                    </div>
+                    <span style={{fontSize:13,fontWeight:700,color:T.violet}}>{profile?.dias_entrenamiento||3} días/sem</span>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    {[2,3,4,5,6].map(d=>{const a=(profile?.dias_entrenamiento||3)===d;return(
+                      <button key={d} onClick={async()=>{setProfile(p=>({...p,dias_entrenamiento:d}));await supabase.from("profiles").update({dias_entrenamiento:d}).eq("id",user.id);}} style={{flex:1,padding:"10px 0",borderRadius:10,border:`2px solid ${a?T.violet:T.border}`,background:a?T.violet+"22":"transparent",color:a?T.violet:T.textMid,fontWeight:a?700:400,cursor:"pointer",fontSize:16,transition:"all .2s",fontFamily:"'DM Sans',sans-serif"}}>{d}</button>
+                    );})}
+                  </div>
                 </div>
                 <div style={{background:T.card,borderRadius:16,padding:"13px 16px",border:`1px solid ${T.border}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",transition:"all .4s"}}>
                   <div><div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{dark?"Modo oscuro activo":"Modo claro activo"}</div><div style={{fontSize:12,color:T.textSub,marginTop:1}}>Cambia la apariencia de la app</div></div>
