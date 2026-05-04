@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TriFlow — Cambia tus hábitos. Encuentra tu flow.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #C8C0B0; border-radius: 99px; }
+
+  @keyframes tfFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes tfFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes tfPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+  @keyframes tfMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes tfDot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  button:focus-visible, a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+
+  @media (max-width: 920px) {
+    .hero-grid, .ai-grid, .tracker-grid, .footer-grid, .features-grid, .steps-grid, .pricing-grid, .testimonials-grid, .metrics-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .nav-links { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="tokens.js"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="nav.jsx"></script>
+<script type="text/babel" src="sections-1.jsx"></script>
+<script type="text/babel" src="sections-2.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "mode": "dark",
+  "accent": "sage",
+  "showFloatingCards": true,
+  "ctaCopy": "Empieza gratis"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tw, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+  const dark = tw.mode === "dark";
+  const baseT = dark ? window.TRIFLOW_TOKENS.dark : window.TRIFLOW_TOKENS.light;
+  const accentMap = {
+    sage: { sage: baseT.sage, sageL: baseT.sageL, sageD: baseT.sageD },
+    violet: { sage: baseT.violet, sageL: baseT.violetL, sageD: baseT.violetD },
+    clay: { sage: baseT.clay, sageL: baseT.clay, sageD: baseT.clay },
+    sky: { sage: baseT.sky, sageL: baseT.sky, sageD: baseT.sky },
+  };
+  const T = { ...baseT, ...(accentMap[tw.accent] || {}) };
+
+  React.useEffect(() => {
+    document.body.style.background = T.bg;
+    document.body.style.color = T.charcoal;
+  }, [T.bg, T.charcoal]);
+
+  return (
+    <div style={{ background: T.bg, color: T.charcoal, minHeight: "100vh", fontFamily: window.TRIFLOW_FONTS.body }}>
+      <window.Nav T={T} />
+      <window.Hero T={T} />
+      <div id="how"><window.HowItWorks T={T} /></div>
+      <window.InteractiveTracker T={T} />
+      <div id="ai"><window.AIAssistant T={T} /></div>
+      <window.FeaturesGrid T={T} />
+      <window.Metrics T={T} />
+      <window.Testimonials T={T} />
+      <div id="pricing"><window.Pricing T={T} /></div>
+      <div id="faq"><window.FAQ T={T} /></div>
+      <window.FinalCTA T={T} />
+      <window.Footer T={T} />
+
+      <window.TweaksPanel title="Tweaks">
+        <window.TweakSection title="Apariencia">
+          <window.TweakRadio label="Modo" value={tw.mode} options={[{value:"light",label:"Light"},{value:"dark",label:"Dark"}]} onChange={v => setTweak("mode", v)} />
+          <window.TweakSelect label="Color de acento" value={tw.accent} options={[
+            {value:"sage", label:"Sage (verde)"},
+            {value:"violet", label:"Violet (lila)"},
+            {value:"clay", label:"Clay (terracota)"},
+            {value:"sky", label:"Sky (azul)"},
+          ]} onChange={v => setTweak("accent", v)} />
+        </window.TweakSection>
+        <window.TweakSection title="Hero">
+          <window.TweakText label="CTA principal" value={tw.ctaCopy} onChange={v => setTweak("ctaCopy", v)} />
+        </window.TweakSection>
+      </window.TweaksPanel>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
