@@ -115,7 +115,7 @@ export default function App(){
   const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");
   const[entrenamientoLoading,setEntrenamientoLoading]=useState(false);const[entrenamientoError,setEntrenamientoError]=useState("");
   const[sesionAbierta,setSesionAbierta]=useState(null);const[logsActuales,setLogsActuales]=useState({});
-  const[accionSugerida,setAccionSugerida]=useState(null);const[showWarningEntrenamiento,setShowWarningEntrenamiento]=useState(false);
+  const[accionSugerida,setAccionSugerida]=useState(null);const[showWarningEntrenamiento,setShowWarningEntrenamiento]=useState(false);const[showObjetivoModal,setShowObjetivoModal]=useState(false);
   const chatBottom=useRef(null);const scannerRef=useRef(null);
   const T=dark?DARK:LIGHT;
   const toggleTheme=()=>setDark(d=>!d);
@@ -1022,12 +1022,20 @@ export default function App(){
                     </div>
                   ))}
                 </div>
-                {[["Objetivo actual",profile?.objetivo?.replace(/_/g," ")||"—",()=>{}],["Cerrar sesión","Salir de tu cuenta",logout]].map(([label,sub,action])=>(
-                  <div key={label} onClick={action} style={{background:T.card,borderRadius:12,padding:"16px",border:`1px solid ${T.border}`,marginBottom:7,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",transition:"all .4s"}}>
-                    <div><div style={{fontSize:14,color:label==="Cerrar sesión"?T.clay:T.charcoal,fontWeight:500}}>{label}</div><div style={{fontSize:11,color:T.textSub,marginTop:2}}>{sub}</div></div>
-                    <span style={{color:T.muted,fontSize:20}}>›</span>
+                <div onClick={()=>setShowObjetivoModal(true)} style={{background:T.card,borderRadius:12,padding:"16px",border:`1px solid ${T.border}`,marginBottom:7,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",transition:"all .4s"}}>
+                  <div>
+                    <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>Objetivo actual</div>
+                    <div style={{fontSize:12,color:T.textSub,marginTop:2,display:"flex",alignItems:"center",gap:6}}>
+                      <span>{profile?.objetivo==="bajar_peso"?"↓":profile?.objetivo==="ganar_musculo"?"↑":"⚡"}</span>
+                      <span style={{textTransform:"capitalize"}}>{profile?.objetivo?.replace(/_/g," ")||"—"}</span>
+                    </div>
                   </div>
-                ))}
+                  <span style={{color:T.muted,fontSize:20}}>›</span>
+                </div>
+                <div onClick={logout} style={{background:T.card,borderRadius:12,padding:"16px",border:`1px solid ${T.border}`,marginBottom:7,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",transition:"all .4s"}}>
+                  <div><div style={{fontSize:14,color:T.clay,fontWeight:500}}>Cerrar sesión</div><div style={{fontSize:11,color:T.textSub,marginTop:2}}>Salir de tu cuenta</div></div>
+                  <span style={{color:T.muted,fontSize:20}}>›</span>
+                </div>
               </div>
             </div>
           )}
@@ -1058,6 +1066,39 @@ export default function App(){
               <button onClick={()=>{setShowWarningEntrenamiento(false);setAccionSugerida(null);}} style={{flex:1,padding:"12px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cancelar</button>
               <button onClick={()=>{setShowWarningEntrenamiento(false);ejecutarAccionAsistente("entrenamiento",null);}} style={{flex:1,padding:"12px",borderRadius:99,background:T.clay,border:"none",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>Sí, reemplazar</button>
             </div>
+          </div>
+        </div>
+      )}
+      {showObjetivoModal&&(
+        <div onClick={()=>setShowObjetivoModal(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(3px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:16,padding:"28px 24px",maxWidth:380,width:"100%",border:`1px solid ${T.border}`,animation:"modeIn .25s ease",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}}>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:6}}>Cambiar objetivo</div>
+            <div style={{fontSize:13,color:T.textSub,marginBottom:20,lineHeight:1.6}}>Selecciona tu nuevo objetivo. Esto no borra tus planes actuales, pero te recomendamos regenerarlos para que se adapten.</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:18}}>
+              {[["bajar_peso","Bajar de peso","↓","Enfoque en déficit calórico y cardio metabólico"],["ganar_musculo","Ganar músculo","↑","Enfoque en hipertrofia y superávit calórico"],["rendimiento","Mejorar rendimiento","⚡","Mix de fuerza, potencia y acondicionamiento"]].map(([v,l,icon,desc])=>{
+                const active=profile?.objetivo===v;
+                return(
+                  <button key={v} onClick={async()=>{
+                    if(active){setShowObjetivoModal(false);return;}
+                    setProfile(p=>({...p,objetivo:v}));
+                    await supabase.from("profiles").update({objetivo:v}).eq("id",user.id);
+                    setShowObjetivoModal(false);
+                  }} style={{padding:"14px 16px",borderRadius:12,border:`2px solid ${active?T.sage:T.border}`,background:active?T.sage+"14":"transparent",cursor:"pointer",textAlign:"left",display:"flex",gap:12,alignItems:"center",fontFamily:"'DM Sans',sans-serif",transition:"all .25s"}}>
+                    <div style={{width:36,height:36,borderRadius:99,background:active?T.sage:T.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:active?"#fff":T.textMid,transition:"all .25s",flexShrink:0}}>{icon}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:active?600:500,color:active?T.sageD:T.charcoal}}>{l}</div>
+                      <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{desc}</div>
+                    </div>
+                    {active&&<div style={{width:20,height:20,borderRadius:99,background:T.sage,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0}}>✓</div>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{background:T.sand+"18",border:`1px solid ${T.sand+"44"}`,borderRadius:12,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"flex-start"}}>
+              <span style={{fontSize:16,flexShrink:0,marginTop:1}}>⚠️</span>
+              <div style={{fontSize:12,color:T.sand,lineHeight:1.6,fontWeight:500}}>Al cambiar tu objetivo, tu menú semanal y plan de entrenamiento podrían no estar alineados. Te recomendamos regenerarlos desde las pestañas <strong>Hábito</strong> y <strong>Entrena</strong>.</div>
+            </div>
+            <button onClick={()=>setShowObjetivoModal(false)} style={{width:"100%",padding:"12px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cerrar</button>
           </div>
         </div>
       )}
