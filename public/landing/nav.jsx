@@ -44,8 +44,8 @@ function Nav({ T, onTweaks }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <window.Btn T={T} kind="link" size="sm">Iniciar sesión</window.Btn>
-        <window.Btn T={T} kind="primary" size="sm" iconRight="arrow">Empieza gratis</window.Btn>
+        <window.Btn T={T} kind="link" size="sm" href="/?start">Iniciar sesión</window.Btn>
+        <window.Btn T={T} kind="primary" size="sm" iconRight="arrow" href="/?start">Empieza gratis</window.Btn>
       </div>
     </nav>
   );

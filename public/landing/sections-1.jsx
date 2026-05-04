@@ -129,7 +129,7 @@ function Hero({ T, variant = "editorial" }) {
 
           <window.Reveal delay={220}>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
-              <window.Btn T={T} kind="primary" size="lg" iconRight="arrow">Empieza gratis</window.Btn>
+              <window.Btn T={T} kind="primary" size="lg" iconRight="arrow" href="/?start">Empieza gratis</window.Btn>
               <window.Btn T={T} kind="ghost" size="lg" icon="play">Ver demo · 90s</window.Btn>
             </div>
           </window.Reveal>

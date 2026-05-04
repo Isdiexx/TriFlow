@@ -354,7 +354,7 @@ function Pricing({ T }) {
                     </li>
                   ))}
                 </ul>
-                <window.Btn T={T} kind={p.featured ? "sage" : "ghost"} size="md" style={{ width: "100%", justifyContent: "center", ...(p.featured ? {} : (p.featured ? {} : {})) }}>
+                <window.Btn T={T} kind={p.featured ? "sage" : "ghost"} size="md" href="/?start" style={{ width: "100%", justifyContent: "center", ...(p.featured ? {} : (p.featured ? {} : {})) }}>
                   {p.cta}
                 </window.Btn>
               </div>
@@ -444,7 +444,7 @@ function FinalCTA({ T }) {
                 Sin tarjeta. Sin permanencia. Solo tú, tus hábitos y un asistente que te entiende.
               </p>
               <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                <window.Btn T={T} kind="sage" size="lg" iconRight="arrow">Empezar gratis</window.Btn>
+                <window.Btn T={T} kind="sage" size="lg" iconRight="arrow" href="/?start">Empezar gratis</window.Btn>
                 <a href="#" style={{ padding: "18px 30px", borderRadius: 99, border: `1px solid ${T.bg}33`, color: T.bg, textDecoration: "none", fontFamily: window.TRIFLOW_FONTS.body, fontSize: 16, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 10 }}>
                   Hablar con un humano <window.Icon name="arrowDiag" size={16}/>
                 </a>
