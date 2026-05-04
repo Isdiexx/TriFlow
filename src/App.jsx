@@ -84,6 +84,7 @@ export default function App(){
   const[dark,setDark]=useState(false);
   const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);
   const[screen,setScreen]=useState(window.location.search.includes("dev")?"app":"loading");
+  const[showLanding,setShowLanding]=useState(!window.location.search.includes("dev"));
   const[tab,setTab]=useState("inicio");
   const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loading,setLoading]=useState(false);const[error,setError]=useState("");
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
@@ -132,7 +133,7 @@ export default function App(){
     supabase.auth.getSession()
       .then(({data:{session}})=>{
         if(!mounted)return;
-        if(session?.user)iniciarCarga(session.user);
+        if(session?.user){setShowLanding(false);iniciarCarga(session.user);}
         else setScreen("auth");
       })
       .catch(()=>{if(mounted)setScreen("auth");});
@@ -273,9 +274,9 @@ export default function App(){
   const sesPorSemana=(n)=>sesiones.filter(s=>s.grupo?.startsWith(`Sem ${n}`));
   const onboardingSlides=[{emoji:"🌱",title:"Organiza tu cambio",desc:"Perfil personalizado según tus objetivos y restricciones"},{emoji:"🥗",title:"Tu alimentación, ordenada",desc:"Menú semanal generado con IA basado en tu despensa"},{emoji:"✦",title:"Con un profesional real",desc:"Tu asistente IA entrena contigo y adapta planes"}];
 
-  /* ── LANDING PAGE (Sin usuario) ─────────────────────────── */
-  if(!user && screen === "loading") {
-    return <LandingPage onNavigateToApp={() => setScreen("auth")} />;
+  /* ── LANDING PAGE (Sin usuario, primera visita) ────────── */
+  if(showLanding && !user) {
+    return <LandingPage onNavigateToApp={() => setShowLanding(false)} />;
   }
 
   /* ── LOADING ──────────────────────────────────────────── */
