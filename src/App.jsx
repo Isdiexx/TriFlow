@@ -83,6 +83,7 @@ export default function App(){
   const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");
   const[entrenamientoLoading,setEntrenamientoLoading]=useState(false);const[entrenamientoError,setEntrenamientoError]=useState("");
   const[sesionAbierta,setSesionAbierta]=useState(null);const[logsActuales,setLogsActuales]=useState({});
+  const[accionSugerida,setAccionSugerida]=useState(null);const[showWarningEntrenamiento,setShowWarningEntrenamiento]=useState(false);
   const chatBottom=useRef(null);const scannerRef=useRef(null);
   const T=dark?DARK:LIGHT;
   const toggleTheme=()=>setDark(d=>!d);
@@ -201,13 +202,30 @@ export default function App(){
     const{error}=await supabase.from("sesiones").update({completada:true,logs}).eq("id",sesionId);
     if(!error){setSesiones(p=>p.map(s=>s.id===sesionId?{...s,completada:true,logs}:s));setSesionAbierta(null);}
   };
-  const generarMenu=async()=>{if(menuLoading)return;setMenuLoading(true);setMenuError("");try{const res=await fetch("/api/generate-menu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile,stock})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.menu)||!data.menu.length)throw new Error("Menú vacío");await supabase.from("menu_semanal").delete().eq("user_id",user.id);const rows=data.menu.map(m=>({user_id:user.id,dia:m.dia,desayuno:m.desayuno||"",almuerzo:m.almuerzo||"",snack:m.snack||"",cena:m.cena||""}));const{data:inserted,error}=await supabase.from("menu_semanal").insert(rows).select();if(error)throw error;setMenu(inserted||rows);setListaCompra(Array.isArray(data.lista_compra)?data.lista_compra:[]);}catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}setMenuLoading(false);};
-  const generarEntrenamiento=async()=>{if(entrenamientoLoading)return;setEntrenamientoLoading(true);setEntrenamientoError("");try{const res=await fetch("/api/generate-training",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.sesiones)||!data.sesiones.length)throw new Error("Sin sesiones generadas");await supabase.from("sesiones").delete().eq("user_id",user.id);const rows=data.sesiones.map(s=>({user_id:user.id,dia:s.dia,grupo:`Sem ${s.semana||1} · ${s.grupo}`,descripcion:s.descripcion||"",completada:false,logs:{}}));const{data:inserted,error}=await supabase.from("sesiones").insert(rows).select();if(error)throw error;setSesiones(inserted||rows);}catch(e){console.error("generarEntrenamiento error:",e);setEntrenamientoError(e.message||"Error generando plan");}setEntrenamientoLoading(false);};
+  const generarMenu=async()=>{if(menuLoading)return false;setMenuLoading(true);setMenuError("");let _ok=false;try{const res=await fetch("/api/generate-menu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile,stock})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.menu)||!data.menu.length)throw new Error("Menú vacío");await supabase.from("menu_semanal").delete().eq("user_id",user.id);const rows=data.menu.map(m=>({user_id:user.id,dia:m.dia,desayuno:m.desayuno||"",almuerzo:m.almuerzo||"",snack:m.snack||"",cena:m.cena||""}));const{data:inserted,error}=await supabase.from("menu_semanal").insert(rows).select();if(error)throw error;setMenu(inserted||rows);setListaCompra(Array.isArray(data.lista_compra)?data.lista_compra:[]);_ok=true;}catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}setMenuLoading(false);return _ok;};
+  const generarEntrenamiento=async()=>{if(entrenamientoLoading)return false;setEntrenamientoLoading(true);setEntrenamientoError("");let _ok=false;try{const res=await fetch("/api/generate-training",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.sesiones)||!data.sesiones.length)throw new Error("Sin sesiones generadas");await supabase.from("sesiones").delete().eq("user_id",user.id);const rows=data.sesiones.map(s=>({user_id:user.id,dia:s.dia,grupo:`Sem ${s.semana||1} · ${s.grupo}`,descripcion:s.descripcion||"",completada:false,logs:{}}));const{data:inserted,error}=await supabase.from("sesiones").insert(rows).select();if(error)throw error;setSesiones(inserted||rows);_ok=true;}catch(e){console.error("generarEntrenamiento error:",e);setEntrenamientoError(e.message||"Error generando plan");}setEntrenamientoLoading(false);return _ok;};
+  const ejecutarAccionAsistente=async(tipo,datos)=>{
+    setAccionSugerida(null);
+    let ok=false;
+    if(tipo==="menu"){ok=await generarMenu();}
+    else if(tipo==="entrenamiento"){ok=await generarEntrenamiento();}
+    else if(tipo==="despensa"&&datos?.items?.length){
+      try{const rows=datos.items.map(i=>({user_id:user.id,nombre:i.nombre,cantidad:parseFloat(i.cantidad)||0,unidad:i.unidad||"g"}));const{data:ins,error}=await supabase.from("stock").insert(rows).select();if(error)throw error;setStock(p=>[...p,...(ins||rows)]);ok=true;}catch(e){ok=false;}
+    }
+    if(ok){
+      if(tipo==="menu")setTab("habito");
+      if(tipo==="entrenamiento")setTab("entrena");
+      const textos={menu:"✓ ¡Menú semanal guardado! Te llevé directo a la pestaña **Hábito** 🥗",entrenamiento:"✓ ¡Plan de entrenamiento guardado! Puedes verlo en la pestaña **Entrena** 💪",despensa:`✓ ${datos?.items?.length||0} producto(s) agregado(s) a tu despensa 📦`};
+      setMsgs(p=>[...p,{role:"assistant",text:textos[tipo]||"✓ ¡Listo!"}]);
+    }else{
+      setMsgs(p=>[...p,{role:"assistant",text:"Hubo un error al guardar. Intenta de nuevo o ve directamente a la pestaña correspondiente."}]);
+    }
+  };
   const agregarSugerencia=async(item,idx)=>{const payload={user_id:user.id,nombre:item.nombre,cantidad:parseFloat(item.cantidad)||0,unidad:item.unidad||"g"};const{data,error}=await supabase.from("stock").insert(payload).select().single();if(error){setMenuError(error.message);return;}setStock(p=>[...p,data]);setListaCompra(p=>p.filter((_,i)=>i!==idx));};
   const lookupProductByBarcode=async(barcode)=>{try{const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);if(!res.ok)return null;const data=await res.json();if(!data.product)return null;return{nombre:data.product.product_name||barcode,imagen:data.product.image_front_url||null,marca:data.product.brands||"",energia:data.product.nutriments?.energy_kcal_100g||null,proteinas:data.product.nutriments?.proteins_100g||null,grasas:data.product.nutriments?.fat_100g||null,carbohidratos:data.product.nutriments?.carbohydrates_100g||null};}catch(e){console.error("Open Food Facts error:",e);return null;}};
   const handleScanSuccess=async(decodedText)=>{setScannedCode(decodedText);setScanLoading(true);const product=await lookupProductByBarcode(decodedText);setScannedProduct(product||{nombre:decodedText,cantidad:"1",unidad:"un",imagen:null});setScanLoading(false);};
   const confirmarProductoEscaneado=async()=>{if(!scannedProduct?.nombre)return;const payload={user_id:user.id,nombre:scannedProduct.nombre,cantidad:parseFloat(scannedProduct.cantidad)||1,unidad:scannedProduct.unidad||"un"};const{data}=await supabase.from("stock").insert(payload).select().single();if(data){setStock(p=>[...p,data]);setShowScanner(false);setScannedCode("");setScannedProduct(null);}};
-  const sendChat=async()=>{if(!chatInput.trim()||chatLoading)return;const txt=chatInput.trim();setChatInput("");setMsgs(p=>[...p,{role:"user",text:txt}]);setChatLoading(true);try{const stockInfo=stock.map(s=>`${s.nombre}: ${s.cantidad}${s.unidad}`).join(", ");const paisU=profile?.pais||"Chile";const system=`Eres el asistente personal de TriFlow para ${profile?.nombre} ${profile?.apellido}.\nPerfil: ${paisU} 🌎 · objetivo ${profile?.objetivo?.replace(/_/g," ")}, peso actual ${profile?.peso_actual}kg, meta ${profile?.peso_meta}kg, restricciones: ${profile?.restricciones?.join(", ")||"ninguna"}.\nDespensa actual: ${stockInfo||"vacía"}.\n\nIMPORTANTE: Adapta tu lenguaje, modismos y nombres de comidas al país del usuario (${paisU}). Por ejemplo:\n- Chile: papa, palta, poroto, choclo, once, marraqueta, cazuela, charquicán\n- Argentina: papa, palta, mate, milanesa, asado, merienda, facturas\n- Perú: papa, palta, ceviche, ají de gallina, lomo saltado, lonche\n- Colombia: papa, aguacate, arepa, frijoles, ajiaco, sancocho, algo\n- Venezuela: aguacate, arepa, caraota, pabellón, cachapa\n- México: jitomate, aguacate, frijol, tortilla, chilaquiles, tacos\n- España: patata, aguacate, judía, garbanzo, tortilla, paella\nUsa modismos naturales del país sin caer en estereotipo. Responde en español, cálido y conciso (máx 200 palabras).`;const msgHistory=msgs.slice(1).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")}));const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,system,messages:[...msgHistory,{role:"user",content:txt}]})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);const responseText=data?.content?.[0]?.text;if(!responseText)throw new Error("Respuesta vacía del servidor");setMsgs(p=>[...p,{role:"assistant",text:responseText}]);}catch(e){console.error("Chat error:",e);setMsgs(p=>[...p,{role:"assistant",text:`Error: ${e.message||"No se pudo obtener respuesta"}. Intenta de nuevo.`}]);}setChatLoading(false);};
+  const sendChat=async()=>{if(!chatInput.trim()||chatLoading)return;const txt=chatInput.trim();setChatInput("");setMsgs(p=>[...p,{role:"user",text:txt}]);setChatLoading(true);try{const stockInfo=stock.map(s=>`${s.nombre}: ${s.cantidad}${s.unidad}`).join(", ");const paisU=profile?.pais||"Chile";const system=`Eres el asistente personal de TriFlow para ${profile?.nombre} ${profile?.apellido}.\nPerfil: ${paisU} 🌎 · objetivo ${profile?.objetivo?.replace(/_/g," ")}, peso actual ${profile?.peso_actual}kg, meta ${profile?.peso_meta}kg, restricciones: ${profile?.restricciones?.join(", ")||"ninguna"}.\nDespensa actual: ${stockInfo||"vacía"}.\n\nIMPORTANTE: Adapta tu lenguaje, modismos y nombres de comidas al país del usuario (${paisU}). Por ejemplo:\n- Chile: papa, palta, poroto, choclo, once, marraqueta, cazuela, charquicán\n- Argentina: papa, palta, mate, milanesa, asado, merienda, facturas\n- Perú: papa, palta, ceviche, ají de gallina, lomo saltado, lonche\n- Colombia: papa, aguacate, arepa, frijoles, ajiaco, sancocho, algo\n- Venezuela: aguacate, arepa, caraota, pabellón, cachapa\n- México: jitomate, aguacate, frijol, tortilla, chilaquiles, tacos\n- España: patata, aguacate, judía, garbanzo, tortilla, paella\nUsa modismos naturales del país sin caer en estereotipo. Responde en español, cálido y conciso (máx 200 palabras).\n\nACCIONES DISPONIBLES — usa estos marcadores SOLO cuando el usuario pide EXPLÍCITAMENTE crear o guardar contenido en la app (NO si solo conversas, consultas o das consejos):\n- Si pide crear un MENÚ SEMANAL completo para 7 días: escribe exactamente [ACCION:menu] al final de tu respuesta.\n- Si pide crear un PLAN DE ENTRENAMIENTO o mesociclo: escribe exactamente [ACCION:entrenamiento] al final.\n- Si pide agregar productos específicos a su DESPENSA: escribe [ACCION:despensa]{"items":[{"nombre":"Nombre","cantidad":N,"unidad":"g"}]}[/ACCION] al final con los items exactos (unidades válidas: g, kg, ml, l, unidad).\nIMPORTANTE: NO incluyas marcadores si el usuario solo pregunta sobre nutrición, ejercicio, recetas o pide consejos en general.`;const msgHistory=msgs.slice(1).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")}));const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,system,messages:[...msgHistory,{role:"user",content:txt}]})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);const responseText=data?.content?.[0]?.text;if(!responseText)throw new Error("Respuesta vacía del servidor");let cleanText=responseText;let nuevoAccion=null;const simpleM=cleanText.match(/\[ACCION:(menu|entrenamiento)\]/i);if(simpleM){nuevoAccion={tipo:simpleM[1].toLowerCase(),datos:null};cleanText=cleanText.replace(/\[ACCION:(menu|entrenamiento)\]/gi,"").trim();}const despensaM=cleanText.match(/\[ACCION:despensa\]([\s\S]*?)\[\/ACCION\]/i);if(despensaM){try{const datosDespensa=JSON.parse(despensaM[1]);nuevoAccion={tipo:"despensa",datos:datosDespensa};cleanText=cleanText.replace(/\[ACCION:despensa\][\s\S]*?\[\/ACCION\]/gi,"").trim();}catch(_){}}setMsgs(p=>[...p,{role:"assistant",text:cleanText}]);if(nuevoAccion)setAccionSugerida(nuevoAccion);}catch(e){console.error("Chat error:",e);setMsgs(p=>[...p,{role:"assistant",text:`Error: ${e.message||"No se pudo obtener respuesta"}. Intenta de nuevo.`}]);}setChatLoading(false);};
 
   const inp=(x={})=>({width:"100%",padding:"12px 14px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.card,fontSize:14,marginBottom:12,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif",...x});
   const btn=(bg,x={})=>({width:"100%",padding:14,borderRadius:99,background:bg,border:"none",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",...x});
@@ -836,6 +854,33 @@ export default function App(){
                 {chatLoading&&<div style={{display:"flex",gap:9,alignItems:"flex-end"}}><div style={{width:29,height:29,borderRadius:99,background:`linear-gradient(135deg,${T.sage},${T.sageD})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12}}>✦</div><div style={{padding:"11px 14px",borderRadius:17,borderBottomLeftRadius:3,background:T.card,border:`1px solid ${T.border}`}}><div style={{display:"flex",gap:5}}>{[0,1,2].map(i=><div key={i} style={{width:7,height:7,borderRadius:99,background:T.muted,animation:`pulse 1.2s ease-in-out ${i*.2}s infinite`}}/>)}</div></div></div>}
                 <div ref={chatBottom}/>
               </div>
+              {/* ── Acción sugerida (sticky sobre el input) ── */}
+              {accionSugerida&&!chatLoading&&(
+                <div style={{margin:"0 10px 6px",background:T.violetL+"33",border:`1.5px solid ${T.violet}`,borderRadius:16,padding:"11px 13px",display:"flex",alignItems:"center",gap:10,animation:"fadeUp .3s ease",flexShrink:0}}>
+                  <div style={{width:32,height:32,borderRadius:99,background:T.violet,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>✦</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:600,color:T.charcoal,marginBottom:1}}>
+                      {accionSugerida.tipo==="menu"?"Generar y guardar menú semanal":accionSugerida.tipo==="entrenamiento"?"Generar y guardar plan de entrenamiento":"Agregar productos a la despensa"}
+                    </div>
+                    <div style={{fontSize:11,color:T.textSub}}>
+                      {accionSugerida.tipo==="menu"?"→ Pestaña Hábito":accionSugerida.tipo==="entrenamiento"?"→ Pestaña Entrena":"→ Despensa"}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button onClick={()=>setAccionSugerida(null)} style={{padding:"6px 10px",borderRadius:99,border:`1px solid ${T.border}`,background:"transparent",color:T.textMid,cursor:"pointer",fontSize:11,fontFamily:"'DM Sans',sans-serif"}}>✕</button>
+                    <button
+                      disabled={menuLoading||entrenamientoLoading}
+                      onClick={()=>{
+                        if(accionSugerida.tipo==="entrenamiento"&&sesiones.filter(s=>!s.completada).length>0){setShowWarningEntrenamiento(true);}
+                        else{ejecutarAccionAsistente(accionSugerida.tipo,accionSugerida.datos);}
+                      }}
+                      style={{padding:"6px 12px",borderRadius:99,background:menuLoading||entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",cursor:menuLoading||entrenamientoLoading?"default":"pointer",fontSize:11,fontWeight:600,fontFamily:"'DM Sans',sans-serif",transition:"background .2s"}}
+                    >
+                      {menuLoading||entrenamientoLoading?"Generando...":"Guardar →"}
+                    </button>
+                  </div>
+                </div>
+              )}
               <div style={{padding:"7px 10px",display:"flex",gap:6,overflowX:"auto",background:T.surface,borderTop:`1px solid ${T.border}`,flexShrink:0}}>
                 {["¿Qué puedo cocinar con mi despensa?","Genera mi menú semanal","Crea mi plan de entrenamiento","¿Cómo voy con mi objetivo?"].map(s=>(
                   <button key={s} onClick={()=>setChatInput(s)} style={{padding:"6px 12px",borderRadius:99,fontSize:11,border:`1px solid ${T.border}`,background:T.card,color:T.textMid,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'DM Sans',sans-serif",flexShrink:0,transition:"all .3s"}}>{s}</button>
@@ -912,6 +957,23 @@ export default function App(){
           </button>
         ))}
       </div>
+      {showWarningEntrenamiento&&(
+        <div onClick={()=>setShowWarningEntrenamiento(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(3px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:22,padding:"28px 24px",maxWidth:340,width:"100%",border:`1px solid ${T.border}`,animation:"modeIn .25s ease",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}}>
+            <div style={{textAlign:"center",marginBottom:18}}>
+              <div style={{fontSize:44,marginBottom:10}}>⚠️</div>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:T.charcoal,marginBottom:10}}>¿Reemplazar plan actual?</div>
+              <div style={{fontSize:13,color:T.textMid,lineHeight:1.7}}>
+                Tienes <strong style={{color:T.clay}}>{sesiones.filter(s=>!s.completada).length} sesiones</strong> pendientes con registros de peso y repeticiones. Al generar un nuevo mesociclo, todo ese progreso se perderá.
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:4}}>
+              <button onClick={()=>{setShowWarningEntrenamiento(false);setAccionSugerida(null);}} style={{flex:1,padding:"13px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:13,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cancelar</button>
+              <button onClick={()=>{setShowWarningEntrenamiento(false);ejecutarAccionAsistente("entrenamiento",null);}} style={{flex:1,padding:"13px",borderRadius:99,background:T.clay,border:"none",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>Sí, reemplazar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
