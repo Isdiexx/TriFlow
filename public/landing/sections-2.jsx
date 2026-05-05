@@ -44,7 +44,7 @@ function AIAssistant({ T }) {
       <div style={{ position: "absolute", top: -200, right: -200, width: 600, height: 600, background: `radial-gradient(closest-side, ${T.violet}33, transparent 70%)`, pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: -200, left: -200, width: 500, height: 500, background: `radial-gradient(closest-side, ${T.sage}26, transparent 70%)`, pointerEvents: "none" }} />
 
-      <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5vw", alignItems: "center", position: "relative" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(300px, 1fr) minmax(300px, 1fr)", gap: "clamp(20px, 5vw, 80px)", alignItems: "center", position: "relative" }}>
         <div>
           <window.Reveal>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", border: `1px solid ${T.violet}66`, borderRadius: 99, fontFamily: window.TRIFLOW_FONTS.body, fontSize: 12, color: T.violetL, marginBottom: 24 }}>
@@ -140,7 +140,7 @@ function FeaturesGrid({ T }) {
           </div>
         </window.Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gridAutoRows: "minmax(220px, auto)", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gridAutoRows: "minmax(200px, auto)", gap: "clamp(12px, 2vw, 16px)" }}>
           {/* Hábitos — large */}
           <window.Reveal as="div" style={{ gridColumn: "span 4", gridRow: "span 2" }}>
             <div style={{ height: "100%", background: T.card, border: `1px solid ${T.border}`, borderRadius: 24, padding: 32, display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden", position: "relative" }}>
@@ -245,7 +245,7 @@ function Metrics({ T }) {
   ];
   return (
     <section data-screen-label="06 Metrics" style={{ padding: "80px 5vw", background: T.bgDeep || T.surface, borderTop: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
-      <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32 }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "clamp(20px, 3vw, 32px)" }}>
         {m.map((it, i) => (
           <window.Reveal key={i} delay={i * 60}>
             <div>
@@ -278,7 +278,7 @@ function Testimonials({ T }) {
             </h2>
           </div>
         </window.Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "clamp(16px, 2vw, 20px)" }}>
           {t.map((q, i) => {
             const c = T[q.color];
             return (
@@ -323,7 +323,7 @@ function Pricing({ T }) {
             </h2>
           </div>
         </window.Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "clamp(12px, 2vw, 16px)", maxWidth: 1100, margin: "0 auto" }}>
           {plans.map((p, i) => (
             <window.Reveal key={i} delay={i * 80}>
               <div style={{
@@ -469,7 +469,7 @@ function Footer({ T }) {
   return (
     <footer data-screen-label="11 Footer" style={{ padding: "60px 5vw 30px", background: T.bgDeep || T.surface, borderTop: `1px solid ${T.border}` }}>
       <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr repeat(4, 1fr)", gap: 40, paddingBottom: 48, borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "clamp(24px, 4vw, 40px)", paddingBottom: 48, borderBottom: `1px solid ${T.border}` }}>
           <div>
             <window.Logo T={T} size={22} />
             <p style={{ fontFamily: window.TRIFLOW_FONTS.body, fontSize: 14, color: T.textMid, marginTop: 16, lineHeight: 1.55, maxWidth: 320, textWrap: "pretty" }}>

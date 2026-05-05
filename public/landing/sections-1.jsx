@@ -82,7 +82,7 @@ function Hero({ T, variant = "editorial" }) {
         <path d="M0,700 Q500,520 800,640 T1200,540" fill="none" stroke="url(#flow1)" strokeWidth="0.8"/>
       </svg>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: "5vw", maxWidth: 1400, margin: "0 auto", alignItems: "center", position: "relative" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1.1fr) minmax(280px, 1fr)", gap: "clamp(20px, 5vw, 80px)", maxWidth: 1400, margin: "0 auto", alignItems: "center", position: "relative" }}>
         {/* Copy */}
         <div>
           <window.Reveal>
@@ -231,7 +231,7 @@ function HowItWorks({ T }) {
           </div>
         </window.Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "clamp(16px, 3vw, 24px)" }}>
           {steps.map((s, i) => {
             const c = T[s.color];
             return (
@@ -300,7 +300,7 @@ function InteractiveTracker({ T }) {
             borderRadius: 32,
             padding: 32,
             display: "grid",
-            gridTemplateColumns: "1fr 1.4fr",
+            gridTemplateColumns: "minmax(280px, 1fr) minmax(300px, 1.4fr)",
             gap: 32,
             boxShadow: "0 24px 60px rgba(0,0,0,0.06)",
           }}>
