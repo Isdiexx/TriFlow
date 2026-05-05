@@ -189,6 +189,7 @@ export default function App(){
   const[entrenamientoLoading,setEntrenamientoLoading]=useState(false);const[entrenamientoError,setEntrenamientoError]=useState("");
   const[sesionAbierta,setSesionAbierta]=useState(null);const[logsActuales,setLogsActuales]=useState({});
   const[accionSugerida,setAccionSugerida]=useState(null);const[showWarningEntrenamiento,setShowWarningEntrenamiento]=useState(false);const[showObjetivoModal,setShowObjetivoModal]=useState(false);
+  const[habitos,setHabitos]=useState([]);const[habitosDiarios,setHabitosDiarios]=useState([]);const[showNuevoHabito,setShowNuevoHabito]=useState(false);const[nuevoHabitoForm,setNuevoHabitoForm]=useState({nombre:"",emoji:"",descripcion:""});
   const chatBottom=useRef(null);const scannerRef=useRef(null);
   const T=dark?DARK:LIGHT;
   const toggleTheme=()=>setDark(d=>!d);
@@ -262,6 +263,8 @@ export default function App(){
       const{data:m}=await supabase.from("menu_semanal").select("*").eq("user_id",uid).order("created_at");setMenu(m||[]);
       const{data:se}=await supabase.from("sesiones").select("*").eq("user_id",uid).order("created_at");setSesiones(se||[]);
       const{data:hp}=await supabase.from("progreso_peso").select("peso,fecha,created_at").eq("user_id",uid).order("created_at",{ascending:true}).limit(60);setHistorialPeso(hp||[]);
+      const{data:hab}=await supabase.from("habitos").select("*").eq("user_id",uid).order("created_at");setHabitos(hab||[]);
+      const hoy=new Date().toISOString().split("T")[0];const{data:habDia}=await supabase.from("habito_diario").select("*").eq("user_id",uid).gte("fecha",new Date(new Date().setDate(new Date().getDate()-6)).toISOString().split("T")[0]);setHabitosDiarios(habDia||[]);
       setMsgs([{role:"assistant",text:`Hola, ${p.nombre}! 🌱\n\nSoy tu asistente de TriFlow. Conozco tu perfil:\n\n**Objetivo:** ${p.objetivo?.replace(/_/g," ")}\n**Peso actual:** ${p.peso_actual} kg → Meta: ${p.peso_meta} kg\n**Restricciones:** ${p.restricciones?.length?p.restricciones.join(", "):"Ninguna"}\n\n¿En qué te ayudo hoy?`}]);
       setScreen("app");
     }catch(e){
@@ -284,6 +287,28 @@ export default function App(){
   const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
   const eliminarProducto=async(id)=>{await supabase.from("stock").delete().eq("id",id);setStock(p=>p.filter(s=>s.id!==id));};
   const toggleSesion=async(id,completada)=>{await supabase.from("sesiones").update({completada:!completada}).eq("id",id);setSesiones(p=>p.map(s=>s.id===id?{...s,completada:!completada}:s));};
+  const crearHabito=async()=>{
+    if(!nuevoHabitoForm.nombre)return;
+    const{data:h}=await supabase.from("habitos").insert({user_id:user.id,...nuevoHabitoForm}).select().single();
+    if(h){setHabitos(p=>[...p,h]);setNuevoHabitoForm({nombre:"",emoji:"",descripcion:""});setShowNuevoHabito(false);}
+  };
+  const completarHabitoDia=async(habitoId)=>{
+    const hoy=new Date().toISOString().split("T")[0];
+    const existe=habitosDiarios.find(h=>h.habito_id===habitoId&&h.fecha===hoy);
+    if(existe){
+      await supabase.from("habito_diario").delete().eq("id",existe.id);
+      setHabitosDiarios(p=>p.filter(h=>h.id!==existe.id));
+    }else{
+      const{data:hd}=await supabase.from("habito_diario").insert({user_id:user.id,habito_id:habitoId,fecha:hoy,completada:true}).select().single();
+      if(hd)setHabitosDiarios(p=>[...p,hd]);
+    }
+  };
+  const eliminarHabito=async(id)=>{
+    await supabase.from("habitos").delete().eq("id",id);
+    await supabase.from("habito_diario").delete().eq("habito_id",id);
+    setHabitos(p=>p.filter(h=>h.id!==id));
+    setHabitosDiarios(p=>p.filter(hd=>hd.habito_id!==id));
+  };
   const parsarEjercicios=(desc)=>{
     if(!desc)return[];
     return desc.split(",").map(e=>e.trim()).filter(Boolean).map(e=>{
@@ -515,6 +540,74 @@ export default function App(){
                   })}
                 </div>
               </div>
+
+              {/* ───── HÁBITOS ───── */}
+              {habitos.length>0&&(()=>{
+                const hoy=new Date().toISOString().split("T")[0];
+                const hoyIdx=new Date().getDay();
+                const hace7=new Date(new Date().setDate(new Date().getDate()-6)).toISOString().split("T")[0];
+                // Completadas hoy
+                const completadasHoy=habitosDiarios.filter(h=>h.fecha===hoy).length;
+                // Semana actual (últimos 7 días)
+                const completadasSem=habitosDiarios.filter(h=>h.fecha>=hace7).reduce((a,v)=>{const k=v.fecha;return{...a,[k]:(a[k]||0)+1};},{});
+                const diasSem=Array.from({length:7},(_,i)=>{const d=new Date(new Date().setDate(new Date().getDate()-6+i));const f=d.toISOString().split("T")[0];return{fecha:f,completadas:completadasSem[f]||0,esHoy:f===hoy};});
+                // Semana anterior
+                const hace14=new Date(new Date().setDate(new Date().getDate()-13)).toISOString().split("T")[0];
+                const completadasSemAnt=habitosDiarios.filter(h=>h.fecha>=hace14&&h.fecha<hace7).reduce((a,v)=>{const k=v.fecha;return{...a,[k]:(a[k]||0)+1};},{});
+                const totalAnt=Object.values(completadasSemAnt).reduce((a,v)=>a+v,0);
+                const diff=Object.values(completadasSem).reduce((a,v)=>a+v,0)-totalAnt;
+                // Insights motivacionales
+                const insights=["Día perfecto. Tu cuerpo lo recordará — son las pequeñas victorias las que cambian todo.","Consistencia es la clave. Cada día te acerca más a tu meta.","Momentum. Mantén el ritmo y los cambios llegarán solos.","Cada hábito pequeño es un paso gigante hacia quien quieres ser.","Tu esfuerzo de hoy es tu éxito de mañana."];
+                const insight=insights[Math.floor(Math.random()*insights.length)];
+                return(
+                  <div style={{padding:"16px 16px 20px",display:"flex",flexDirection:"column",gap:14,background:T.surface}}>
+                    <div>
+                      <div style={{fontSize:11,color:T.sage,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>MARCA UN HÁBITO</div>
+                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginBottom:2}}>Siente el flow</div>
+                    </div>
+                    {/* Hábitos del día */}
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {habitos.map(h=>{
+                        const completado=habitosDiarios.some(hd=>hd.habito_id===h.id&&hd.fecha===hoy);
+                        return(
+                          <button key={h.id} onClick={()=>completarHabitoDia(h.id)} style={{padding:"12px 14px",borderRadius:12,border:`1.5px solid ${completado?T.sage:T.border}`,background:completado?T.sage+"20":"transparent",display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"all .2s",fontFamily:"'DM Sans',sans-serif"}}>
+                            <div style={{width:24,height:24,borderRadius:99,background:completado?T.sage:T.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:completado?"#fff":T.textMid,fontWeight:600,flexShrink:0}}>{completado?"✓":h.emoji||"✦"}</div>
+                            <div style={{flex:1,textAlign:"left"}}>
+                              <div style={{fontSize:14,color:completado?T.sage:T.charcoal,fontWeight:completado?600:400}}>{h.nombre}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <button onClick={()=>setShowNuevoHabito(true)} style={{padding:"10px 14px",borderRadius:12,border:`1.5px dashed ${T.border}`,background:"transparent",display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:T.textMid,fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>+ Nuevo hábito</button>
+                    </div>
+                    {/* Calendario semanal */}
+                    <div style={{display:"flex",gap:6}}>
+                      {diasSem.map((d,i)=>(
+                        <div key={d.fecha} style={{flex:1,textAlign:"center"}}>
+                          <div style={{fontSize:11,color:d.esHoy?T.sage:T.textSub,fontWeight:d.esHoy?600:400,marginBottom:3}}>{["D","L","M","M","J","V","S"][d.fecha.split("-")[2]%7]}</div>
+                          <div style={{width:"100%",aspectRatio:"1",borderRadius:10,background:d.completadas>0?T.sage+"22":T.border,border:`1.5px solid ${d.completadas>0?T.sage:d.esHoy?T.sageL:T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:d.completadas>0?T.sage:T.textMid,transition:"all .2s"}}>
+                            {d.completadas||0}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Stats y comparativa */}
+                    <div style={{background:T.card,borderRadius:14,padding:"12px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>COMPLETADAS</div>
+                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.sage}}>{Object.values(completadasSem).reduce((a,v)=>a+v,0)}</div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:11,color:T.textSub}}>esta semana</div>
+                        <div style={{fontSize:14,fontWeight:600,color:diff>0?T.sage:diff<0?T.clay:T.textSub,marginTop:2}}>{diff>0?"+"+diff:diff}</div>
+                        <div style={{fontSize:10,color:T.textSub}}>vs semana pasada</div>
+                      </div>
+                    </div>
+                    {/* Insight */}
+                    <div style={{background:T.bg,borderRadius:12,padding:"12px 14px",borderLeft:`3px solid ${T.violet}`,fontSize:13,color:T.textMid,lineHeight:1.6,fontStyle:"italic"}}>{insight}</div>
+                  </div>
+                );
+              })()}
 
               <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
                 {/* Historial de peso */}
@@ -1234,6 +1327,37 @@ export default function App(){
               <div style={{fontSize:12,color:T.sand,lineHeight:1.6,fontWeight:500}}>Al cambiar tu objetivo, tu menú semanal y plan de entrenamiento podrían no estar alineados. Te recomendamos regenerarlos desde las pestañas <strong>Hábito</strong> y <strong>Entrena</strong>.</div>
             </div>
             <button onClick={()=>setShowObjetivoModal(false)} style={{width:"100%",padding:"12px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cerrar</button>
+          </div>
+        </div>
+      )}
+      {showNuevoHabito&&(
+        <div onClick={()=>setShowNuevoHabito(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(3px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:16,padding:"28px 24px",maxWidth:340,width:"100%",border:`1px solid ${T.border}`,animation:"modeIn .25s ease",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}}>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:4}}>Nuevo hábito</div>
+            <div style={{fontSize:12,color:T.textSub,marginBottom:16,lineHeight:1.5}}>Crea un hábito diario para marcar y monitorear tu progreso</div>
+            {/* Selector de emoji */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>EMOJI</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
+                {["🧘","📖","🏃","💪","🥗","😴","🧠","🎯","❤️","⚡","🌱","📱"].map(e=>(
+                  <button key={e} onClick={()=>setNuevoHabitoForm({...nuevoHabitoForm,emoji:e})} style={{fontSize:20,padding:"12px",borderRadius:10,border:`2px solid ${nuevoHabitoForm.emoji===e?T.sage:T.border}`,background:nuevoHabitoForm.emoji===e?T.sage+"18":"transparent",cursor:"pointer",transition:"all .2s"}}>{e}</button>
+                ))}
+              </div>
+            </div>
+            {/* Nombre */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>NOMBRE</div>
+              <input type="text" placeholder="ej: Meditar, Correr 5km, Leer..." value={nuevoHabitoForm.nombre} onChange={e=>setNuevoHabitoForm({...nuevoHabitoForm,nombre:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:14,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif",transition:"all .3s"}} autoFocus/>
+            </div>
+            {/* Descripción */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>DESCRIPCIÓN (opcional)</div>
+              <textarea placeholder="ej: 30 minutos de meditación, intensidad moderada..." value={nuevoHabitoForm.descripcion} onChange={e=>setNuevoHabitoForm({...nuevoHabitoForm,descripcion:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:14,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif",resize:"none",height:60,transition:"all .3s"}}/>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setShowNuevoHabito(false)} style={{flex:1,padding:"12px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cancelar</button>
+              <button onClick={crearHabito} disabled={!nuevoHabitoForm.nombre} style={{flex:1,padding:"12px",borderRadius:99,background:nuevoHabitoForm.nombre?T.sage:T.muted,border:"none",color:"#fff",cursor:nuevoHabitoForm.nombre?"pointer":"not-allowed",fontSize:14,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>Crear</button>
+            </div>
           </div>
         </div>
       )}
