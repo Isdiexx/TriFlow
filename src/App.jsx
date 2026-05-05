@@ -97,6 +97,79 @@ function WeightSparkline({data,color,width=120,height=40}){
   );
 }
 
+function WeightChart({data,meta,T,width=320,height=200}){
+  if(!data||data.length<2)return null;
+  const entries=data.map(d=>({peso:parseFloat(d.peso),fecha:d.fecha||d.created_at?.split("T")[0]||""})).filter(d=>!isNaN(d.peso));
+  if(entries.length<2)return null;
+  const vals=entries.map(d=>d.peso);
+  const metaVal=parseFloat(meta)||0;
+  const allVals=metaVal>0?[...vals,metaVal]:vals;
+  const mn=Math.min(...allVals)-0.5,mx=Math.max(...allVals)+0.5,rng=mx-mn||1;
+  const padL=44,padR=12,padT=16,padB=36;
+  const cw=width-padL-padR,ch=height-padT-padB;
+  const toX=(i)=>padL+i*(cw/Math.max(1,entries.length-1));
+  const toY=(v)=>padT+ch-((v-mn)/rng)*ch;
+  const pts=entries.map((d,i)=>[toX(i),toY(d.peso)]);
+  const path="M"+pts.map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join("L");
+  const area=path+`L${pts[pts.length-1][0].toFixed(1)},${padT+ch}L${pts[0][0].toFixed(1)},${padT+ch}Z`;
+  // Y axis labels (4-5 ticks)
+  const nTicks=4;
+  const tickStep=rng/nTicks;
+  const yTicks=Array.from({length:nTicks+1},(_,i)=>mn+i*tickStep);
+  // X axis labels (show ~5 dates)
+  const xStep=Math.max(1,Math.floor(entries.length/5));
+  const formatDate=(d)=>{if(!d)return"";const p=d.split("-");return p.length>=3?`${p[2]}/${p[1]}`:"";};
+  // meta line Y
+  const metaY=metaVal>0?toY(metaVal):null;
+  // trend line (linear regression)
+  const n=vals.length,sx=vals.reduce((_,__,i)=>_+i,0),sy=vals.reduce((a,v)=>a+v,0);
+  const sxy=vals.reduce((a,v,i)=>a+i*v,0),sx2=vals.reduce((a,_,i)=>a+i*i,0);
+  const slope=(n*sxy-sx*sy)/(n*sx2-sx*sx||1),intercept=(sy-slope*sx)/n;
+  const trendY0=toY(intercept),trendY1=toY(slope*(n-1)+intercept);
+
+  return(
+    <svg width={width} height={height} style={{overflow:"visible"}}>
+      <defs>
+        <linearGradient id="wcg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={T.sage} stopOpacity="0.18"/>
+          <stop offset="100%" stopColor={T.sage} stopOpacity="0.02"/>
+        </linearGradient>
+      </defs>
+      {/* Grid lines */}
+      {yTicks.map((v,i)=>(
+        <g key={i}>
+          <line x1={padL} x2={width-padR} y1={toY(v)} y2={toY(v)} stroke={T.border} strokeWidth="0.8" strokeDasharray={i===0||i===nTicks?"":"3,3"}/>
+          <text x={padL-6} y={toY(v)+4} textAnchor="end" fontSize="10" fill={T.textSub} fontFamily="'JetBrains Mono',monospace">{v.toFixed(1)}</text>
+        </g>
+      ))}
+      {/* X axis dates */}
+      {entries.map((d,i)=>i%xStep===0||i===entries.length-1?(
+        <text key={i} x={toX(i)} y={height-6} textAnchor="middle" fontSize="10" fill={T.textSub} fontFamily="'JetBrains Mono',monospace">{formatDate(d.fecha)}</text>
+      ):null)}
+      {/* Meta line */}
+      {metaY!==null&&metaY>=padT&&metaY<=padT+ch&&(
+        <g>
+          <line x1={padL} x2={width-padR} y1={metaY} y2={metaY} stroke={T.sage} strokeWidth="1.2" strokeDasharray="6,4" opacity="0.7"/>
+          <text x={width-padR+2} y={metaY+3} fontSize="9" fill={T.sage} fontFamily="'JetBrains Mono',monospace" fontWeight="600">META</text>
+        </g>
+      )}
+      {/* Trend line */}
+      <line x1={pts[0][0]} y1={trendY0} x2={pts[pts.length-1][0]} y2={trendY1} stroke={T.violet} strokeWidth="1" strokeDasharray="4,4" opacity="0.5"/>
+      {/* Area fill */}
+      <path d={area} fill="url(#wcg)"/>
+      {/* Main line */}
+      <path d={path} fill="none" stroke={T.sage} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Data points */}
+      {pts.map(([x,y],i)=>(
+        <g key={i}>
+          <circle cx={x} cy={y} r={i===pts.length-1?5:3} fill={i===pts.length-1?T.sage:T.card} stroke={T.sage} strokeWidth={i===pts.length-1?0:1.5}/>
+          {i===pts.length-1&&<text x={x} y={y-10} textAnchor="middle" fontSize="11" fontWeight="600" fill={T.sage} fontFamily="'Space Grotesk',sans-serif">{entries[i].peso.toFixed(1)}</text>}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 export default function App(){
   const[dark,setDark]=useState(false);
   const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);
@@ -107,7 +180,7 @@ export default function App(){
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
   const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile",dias_entrenamiento:3});
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
-  const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");
+  const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");const[showPesoDetalle,setShowPesoDetalle]=useState(false);const[pesoRango,setPesoRango]=useState("all");
   const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
   const[diaMenu,setDiaMenu]=useState(0);const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
   const[showScanner,setShowScanner]=useState(false);const[scannedCode,setScannedCode]=useState("");const[scannedProduct,setScannedProduct]=useState(null);const[scanLoading,setScanLoading]=useState(false);
@@ -455,6 +528,16 @@ export default function App(){
                   const velSemanal=tendencia/semanas;
                   const semanasAlObjetivo=velSemanal!==0&&Math.sign(velSemanal)===Math.sign(pm-pa)?Math.abs(diff/velSemanal):null;
                   const progPct=Math.max(5,Math.min(100,100-(diff/(pa||1)*100)));
+                  // Filtered data for chart
+                  const now=new Date();
+                  const filteredData=pesoRango==="all"?historialPeso:historialPeso.filter(d=>{const dd=new Date(d.created_at||d.fecha);const diff2=now-dd;return pesoRango==="7d"?diff2<=7*864e5:pesoRango==="30d"?diff2<=30*864e5:diff2<=90*864e5;});
+                  // Weekly averages
+                  const weekAvgs=(()=>{if(historialPeso.length<2)return[];const weeks={};historialPeso.forEach(d=>{const dt=new Date(d.created_at||d.fecha);const wk=`${dt.getFullYear()}-W${Math.ceil(((dt-new Date(dt.getFullYear(),0,1))/864e5+1)/7)}`;if(!weeks[wk])weeks[wk]={sum:0,n:0,date:d.fecha||d.created_at?.split("T")[0]};weeks[wk].sum+=parseFloat(d.peso);weeks[wk].n++;});return Object.values(weeks).map(w=>({peso:(w.sum/w.n).toFixed(1),fecha:w.date}));})();
+                  // Min/max/total change
+                  const allPesos=historialPeso.map(d=>parseFloat(d.peso)).filter(v=>!isNaN(v));
+                  const pesoMin=allPesos.length?Math.min(...allPesos):0;
+                  const pesoMax=allPesos.length?Math.max(...allPesos):0;
+                  const cambioTotal=allPesos.length>=2?allPesos[allPesos.length-1]-allPesos[0]:0;
                   return(
                     <div style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -468,10 +551,13 @@ export default function App(){
                           <div style={{fontSize:11,color:T.textSub,marginTop:1}}>meta {pm} kg · faltan {Math.abs(diff).toFixed(1)} kg</div>
                         </div>
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-                          <WeightSparkline data={ultimos} color={bajando?T.sage:T.sky} width={90} height={36}/>
-                          {!showPesoInput&&(
-                            <button onClick={()=>{setShowPesoInput(true);setNuevoPesoVal(pa.toFixed(1));}} style={{padding:"4px 10px",borderRadius:99,border:`1.5px solid ${T.sage}`,background:"transparent",fontSize:11,color:T.sageD,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>+ Registrar</button>
-                          )}
+                          {!showPesoDetalle&&<WeightSparkline data={ultimos} color={bajando?T.sage:T.sky} width={90} height={36}/>}
+                          <div style={{display:"flex",gap:6}}>
+                            {!showPesoInput&&(
+                              <button onClick={()=>{setShowPesoInput(true);setNuevoPesoVal(pa.toFixed(1));}} style={{padding:"4px 10px",borderRadius:99,border:`1.5px solid ${T.sage}`,background:"transparent",fontSize:11,color:T.sageD,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>+ Registrar</button>
+                            )}
+                            <button onClick={()=>setShowPesoDetalle(!showPesoDetalle)} style={{padding:"4px 10px",borderRadius:99,border:`1.5px solid ${T.border}`,background:showPesoDetalle?T.sage+"18":"transparent",fontSize:11,color:showPesoDetalle?T.sage:T.textMid,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>{showPesoDetalle?"Cerrar":"Ver gráfico"}</button>
+                          </div>
                         </div>
                       </div>
                       {showPesoInput&&(
@@ -481,14 +567,63 @@ export default function App(){
                           <button onClick={()=>setShowPesoInput(false)} style={{padding:"8px",borderRadius:99,background:T.border,border:"none",color:T.textMid,fontSize:14,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>✕</button>
                         </div>
                       )}
+                      {/* Progress bar */}
                       <div style={{background:T.border,borderRadius:99,height:5,overflow:"hidden",marginBottom:4}}>
                         <div style={{width:progPct+"%",height:"100%",background:`linear-gradient(90deg,${T.sage},${T.sageL})`,borderRadius:99,transition:"width .8s ease"}}/>
                       </div>
-                      <div style={{display:"flex",justifyContent:"space-between"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:showPesoDetalle?12:0}}>
                         <div style={{fontSize:11,color:T.textSub}}>{historialPeso.length} registros</div>
                         {semanasAlObjetivo&&<div style={{fontSize:11,color:T.textSub}}>~{Math.ceil(semanasAlObjetivo)} sem al objetivo</div>}
                         {velSemanal!==0&&ultimos.length>=2&&<div style={{fontSize:11,color:T.textSub}}>{velSemanal<0?"":"+"}{velSemanal.toFixed(2)} kg/sem</div>}
                       </div>
+                      {/* ── Expanded chart view ── */}
+                      {showPesoDetalle&&(
+                        <div className="fade-in">
+                          {/* Range selector */}
+                          <div style={{display:"flex",gap:6,marginBottom:12}}>
+                            {[["7d","7 días"],["30d","30 días"],["90d","90 días"],["all","Todo"]].map(([v,l])=>(
+                              <button key={v} onClick={()=>setPesoRango(v)} style={{flex:1,padding:"6px 0",borderRadius:99,fontSize:11,fontWeight:pesoRango===v?600:400,border:`1.5px solid ${pesoRango===v?T.sage:T.border}`,background:pesoRango===v?T.sage+"18":"transparent",color:pesoRango===v?T.sage:T.textMid,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>{l}</button>
+                            ))}
+                          </div>
+                          {/* SVG Chart */}
+                          {filteredData.length>=2?(
+                            <div style={{width:"100%",overflowX:"auto",marginBottom:12}}>
+                              <WeightChart data={filteredData} meta={pm} T={T} width={Math.max(320,filteredData.length*24)} height={180}/>
+                            </div>
+                          ):(
+                            <div style={{textAlign:"center",padding:"20px 0",color:T.textSub,fontSize:13}}>No hay suficientes datos en este rango</div>
+                          )}
+                          {/* Stats grid */}
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+                            {[["CAMBIO",`${cambioTotal>=0?"+":""}${cambioTotal.toFixed(1)} kg`,cambioTotal<0?T.sage:T.clay],["MÍNIMO",`${pesoMin.toFixed(1)} kg`,T.sky],["MÁXIMO",`${pesoMax.toFixed(1)} kg`,T.sand]].map(([k,v,c])=>(
+                              <div key={k} style={{background:T.bg,borderRadius:12,padding:"10px 8px",textAlign:"center",transition:"background .4s"}}>
+                                <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>{k}</div>
+                                <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:16,fontWeight:600,letterSpacing:"-0.02em",color:c}}>{v}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Legend */}
+                          <div style={{display:"flex",gap:14,justifyContent:"center",fontSize:10,color:T.textSub}}>
+                            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:12,height:2,background:T.sage,borderRadius:2}}/> Peso</div>
+                            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:12,height:2,background:T.sage,borderRadius:2,opacity:.4,borderTop:"1px dashed "+T.sage}}/> Meta</div>
+                            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:12,height:2,background:T.violet,borderRadius:2,opacity:.5}}/> Tendencia</div>
+                          </div>
+                          {/* Weekly averages */}
+                          {weekAvgs.length>1&&(
+                            <div style={{marginTop:12}}>
+                              <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:8}}>PROMEDIO SEMANAL</div>
+                              <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
+                                {weekAvgs.slice(-8).map((w,i)=>(
+                                  <div key={i} style={{minWidth:56,background:T.bg,borderRadius:10,padding:"8px 6px",textAlign:"center",flexShrink:0}}>
+                                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,fontWeight:600,color:T.charcoal}}>{w.peso}</div>
+                                    <div style={{fontSize:9,color:T.textSub,marginTop:2,fontFamily:"'JetBrains Mono',monospace"}}>{w.fecha?.split("-").slice(1).reverse().join("/")}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
