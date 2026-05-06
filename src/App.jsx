@@ -603,7 +603,7 @@ export default function App(){
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
                     <div style={{fontSize:14,color:T.textSub}}>{saludo}</div>
-                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginTop:2}}>{profile?.nombre} <span style={{color:T.sage,opacity:.6}}>✦</span></div>
+                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginTop:2}}>{profile?.nombre}</div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <ThemeToggle dark={dark} toggle={toggleTheme} T={T}/>
@@ -617,7 +617,7 @@ export default function App(){
                     const esHoy=i===hoyIdx;
                     return(<div key={i} style={{flex:1,textAlign:"center"}}>
                       <div style={{width:"100%",height:4,borderRadius:99,background:tieneMenu?T.sage:esHoy?T.sageL:T.border,marginBottom:4,transition:"background .3s"}}/>
-                      <div style={{fontSize:11,color:esHoy?T.sage:T.textSub,fontWeight:esHoy?600:400}}>{d}</div>
+                      <div style={{fontSize:11,color:esHoy?"#fff":T.textSub,fontWeight:esHoy?600:400,background:esHoy?T.sage:"transparent",borderRadius:99,padding:esHoy?"2px 0":"0",transition:"all .3s"}}>{d}</div>
                     </div>);
                   })}
                 </div>
