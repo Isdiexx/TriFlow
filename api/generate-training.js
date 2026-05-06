@@ -14,7 +14,8 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = process.env.ANTHROPIC_KEY || process.env.VITE_ANTHROPIC_KEY || '';
+  const apiKey = process.env.ANTHROPIC_KEY || '';
+  if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
   const { profile = {} } = req.body || {};
 
   const objetivoTexto = (profile.objetivo || '').replace(/_/g, ' ');
@@ -139,8 +140,8 @@ ${ejemploJson}`;
 
     const raw = await response.text();
     if (!response.ok) {
-      console.error('Anthropic error:', raw.substring(0, 300));
-      return res.status(response.status).json({ error: raw });
+      console.error('[generate-training] Anthropic error:', response.status);
+      return res.status(response.status).json({ error: 'Error del servicio de IA' });
     }
 
     const json = JSON.parse(raw);

@@ -7,11 +7,8 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const apiKey = process.env.ANTHROPIC_KEY || process.env.VITE_ANTHROPIC_KEY || '';
-
-  console.log('[Vercel Chat API]');
-  console.log('API KEY configured:', apiKey.length > 0 && !apiKey.includes('placeholder'));
-  console.log('Messages:', req.body.messages?.length || 0);
+  const apiKey = process.env.ANTHROPIC_KEY || '';
+  if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
     const payload = {
@@ -20,8 +17,6 @@ export default async function handler(req, res) {
       system: req.body.system || '',
       messages: req.body.messages || []
     };
-
-    console.log('Sending to Anthropic...');
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -34,16 +29,12 @@ export default async function handler(req, res) {
     });
 
     const raw = await response.text();
-    console.log('Anthropic status:', response.status);
-
     if (!response.ok) {
-      console.error('Anthropic error:', raw.substring(0, 200));
-      return res.status(response.status).json({ error: raw });
+      console.error('[chat] Anthropic error:', response.status);
+      return res.status(response.status).json({ error: 'Error del servicio de IA' });
     }
 
     const json = JSON.parse(raw);
-    console.log('Success! Response length:', json?.content?.[0]?.text?.length);
-
     return res.status(200).json(json);
   } catch (e) {
     console.error('Error:', e.message);
