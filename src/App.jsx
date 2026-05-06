@@ -172,7 +172,7 @@ function WeightChart({data,meta,T,width=320,height=200}){
 }
 
 export default function App(){
-  const[dark,setDark]=useState(false);
+  const[dark,setDark]=useState(()=>{try{return localStorage.getItem("triflow_dark")==="1";}catch{return false;}});
   const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);
   const[screen,setScreen]=useState(window.location.search.includes("dev")?"app":"loading");
   const[showLanding,setShowLanding]=useState(!window.location.search.includes("dev")&&!window.location.search.includes("start")&&!window.location.hash.includes("access_token")&&!window.location.hash.includes("refresh_token"));
@@ -195,7 +195,7 @@ export default function App(){
   const[menuTracking,setMenuTracking]=useState([]);const[comentarioAbierto,setComentarioAbierto]=useState(null);const[comentarioTemp,setComentarioTemp]=useState("");
   const chatBottom=useRef(null);const scannerRef=useRef(null);
   const T=dark?DARK:LIGHT;
-  const toggleTheme=()=>setDark(d=>!d);
+  const toggleTheme=()=>setDark(d=>{const next=!d;try{localStorage.setItem("triflow_dark",next?"1":"0");}catch{}return next;});
 
   useEffect(()=>{
     const saved=localStorage.getItem("triflow_email");if(saved)setEmail(saved);
