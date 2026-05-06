@@ -583,6 +583,16 @@ export default function App(){
               </div>
 
               {/* ───── HÁBITOS ───── */}
+              {habitos.length===0&&(
+                <div style={{padding:"16px 16px 20px",background:T.surface}}>
+                  <div style={{fontSize:11,color:T.sage,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>HÁBITOS DIARIOS</div>
+                  <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginBottom:8}}>Construye tu rutina</div>
+                  <div style={{fontSize:13,color:T.textSub,lineHeight:1.6,marginBottom:16}}>Agrega hábitos diarios que quieras mantener. TriFlow te ayudará a seguir tu progreso y mantener la consistencia.</div>
+                  <button onClick={()=>setShowNuevoHabito(true)} style={{width:"100%",padding:"14px",borderRadius:12,border:`2px dashed ${T.sage}44`,background:T.sage+"0A",color:T.sage,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
+                    <span style={{fontSize:18}}>+</span> Crear mi primer hábito
+                  </button>
+                </div>
+              )}
               {habitos.length>0&&(()=>{
                 const hoy=new Date().toISOString().split("T")[0];
                 const hoyIdx=new Date().getDay();
