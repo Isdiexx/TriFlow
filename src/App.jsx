@@ -190,6 +190,7 @@ export default function App(){
   const[sesionAbierta,setSesionAbierta]=useState(null);const[logsActuales,setLogsActuales]=useState({});
   const[accionSugerida,setAccionSugerida]=useState(null);const[showWarningEntrenamiento,setShowWarningEntrenamiento]=useState(false);const[showObjetivoModal,setShowObjetivoModal]=useState(false);
   const[habitos,setHabitos]=useState([]);const[habitosDiarios,setHabitosDiarios]=useState([]);const[showNuevoHabito,setShowNuevoHabito]=useState(false);const[nuevoHabitoForm,setNuevoHabitoForm]=useState({nombre:"",emoji:"",descripcion:""});
+  const[showReporteS,setShowReporteS]=useState(false);
   const chatBottom=useRef(null);const scannerRef=useRef(null);
   const T=dark?DARK:LIGHT;
   const toggleTheme=()=>setDark(d=>!d);
@@ -273,6 +274,8 @@ export default function App(){
     }
   };
   const handleAuth=async()=>{setLoading(true);setError("");try{if(rememberMe)localStorage.setItem("triflow_email",email);else localStorage.removeItem("triflow_email");if(modo==="registro"){const{error:e}=await supabase.auth.signUp({email,password:pass});if(e)throw e;setError("Revisa tu email para confirmar tu cuenta");}else{const{error:e}=await supabase.auth.signInWithPassword({email,password:pass});if(e)throw e;}}catch(e){setError(e.message);}setLoading(false);};
+  const loginGoogle=async()=>{setLoading(true);setError("");try{const{error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin}});if(error)throw error;}catch(e){setError(e.message);setLoading(false);}};
+  const loginGitHub=async()=>{setLoading(true);setError("");try{const{error}=await supabase.auth.signInWithOAuth({provider:"github",options:{redirectTo:window.location.origin}});if(error)throw error;}catch(e){setError(e.message);setLoading(false);}};
   const saveProfile=async()=>{setLoading(true);try{const payload={id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)};let{error:e}=await supabase.from("profiles").upsert(payload);if(e&&/pais/i.test(e.message||"")){console.warn("Columna pais no existe aún en DB, reintentando sin ella");const{pais,...payloadSinPais}=payload;const r=await supabase.from("profiles").upsert(payloadSinPais);e=r.error;}if(e)throw e;await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});await loadAll(user.id);}catch(e){console.error("saveProfile error:",e);setError(e.message||"Error al guardar perfil");}setLoading(false);};
   const logout=async()=>{await supabase.auth.signOut();};
   const updateAgua=async(v)=>{setAgua(v);await supabase.from("agua_diaria").upsert({user_id:user.id,fecha:new Date().toISOString().split("T")[0],vasos:v},{onConflict:"user_id,fecha"});};
@@ -418,8 +421,26 @@ export default function App(){
           <div style={{height:24}}/>
 
           <div style={{fontSize:20,fontWeight:600,color:T.charcoal,marginBottom:8}}>¿Ya tienes cuenta?</div>
-          <div style={{fontSize:14,color:T.textSub,marginBottom:32}}>Elige cómo deseas continuar</div>
-          <button onClick={()=>{setModo("login");setError("");}} style={btn(T.sage,{marginBottom:12})}>Iniciar sesión</button>
+          <div style={{fontSize:14,color:T.textSub,marginBottom:24}}>Elige cómo deseas continuar</div>
+
+          {/* OAuth Buttons */}
+          <button onClick={loginGoogle} disabled={loading} style={{width:"100%",padding:"13px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,color:T.charcoal,cursor:loading?"default":"pointer",fontSize:14,fontWeight:600,fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:10,transition:"all .2s",marginBottom:10}}>
+            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continuar con Google
+          </button>
+          <button onClick={loginGitHub} disabled={loading} style={{width:"100%",padding:"13px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,color:T.charcoal,cursor:loading?"default":"pointer",fontSize:14,fontWeight:600,fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:10,transition:"all .2s",marginBottom:16}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={T.charcoal}><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            Continuar con GitHub
+          </button>
+
+          {/* Separator */}
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+            <div style={{flex:1,height:"1px",background:T.border}}/>
+            <div style={{fontSize:11,color:T.textSub,fontFamily:"'JetBrains Mono',monospace"}}>O CON EMAIL</div>
+            <div style={{flex:1,height:"1px",background:T.border}}/>
+          </div>
+
+          <button onClick={()=>{setModo("login");setError("");}} style={btn(T.sage,{marginBottom:12})}>Iniciar sesión con email</button>
           <button onClick={()=>{setModo("intro");setOnboardingSlide(0);setError("");}} style={btn(T.border2,{color:T.charcoal})}>Crear nueva cuenta</button>
         </div>
         <div style={{position:"absolute",top:20,right:20}}><ThemeToggle dark={dark} toggle={toggleTheme} T={T}/></div>
@@ -453,7 +474,27 @@ export default function App(){
         <div style={{position:"relative",marginBottom:20}}><input type={showPass?"text":"password"} placeholder="Contraseña" value={pass} onChange={e=>setPass(e.target.value)} style={inp({marginBottom:0,paddingRight:40})}/><button onClick={()=>setShowPass(!showPass)} style={{position:"absolute",right:12,top:12,background:"none",border:"none",cursor:"pointer",fontSize:16,color:T.textSub}}>{showPass?"👁️":"👁️‍🗨️"}</button></div>
         {modo==="login"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20,fontSize:14}}><input type="checkbox" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)} style={{cursor:"pointer"}}/><label style={{cursor:"pointer",color:T.textMid}}>Recordar usuario</label></div>}
         <button onClick={handleAuth} disabled={loading||!email||!pass} style={btn(email&&pass&&!loading?T.sage:T.muted)}>{loading?"Cargando...":modo==="login"?"Iniciar sesión":"Crear cuenta"}</button>
-        {modo==="login"&&<button onClick={()=>{setModo("welcome");setError("");}} style={{width:"100%",marginTop:12,padding:10,borderRadius:99,background:"transparent",border:`1px solid ${T.border}`,color:T.charcoal,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:14}}>¿No tienes cuenta? Regístrate</button>}
+
+        {/* OAuth Buttons */}
+        {modo==="login"&&(
+          <div style={{marginTop:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <div style={{flex:1,height:"1px",background:T.border}}/>
+              <div style={{fontSize:12,color:T.textSub,fontFamily:"'JetBrains Mono',monospace"}}>O CONTINÚA CON</div>
+              <div style={{flex:1,height:"1px",background:T.border}}/>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={loginGoogle} disabled={loading} style={{flex:1,padding:"12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,color:T.charcoal,cursor:loading?"default":"pointer",fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s",opacity:loading?0.6:1}}>
+                <span style={{fontSize:16}}>🔵</span> Google
+              </button>
+              <button onClick={loginGitHub} disabled={loading} style={{flex:1,padding:"12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,color:T.charcoal,cursor:loading?"default":"pointer",fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s",opacity:loading?0.6:1}}>
+                <span style={{fontSize:16}}>⚫</span> GitHub
+              </button>
+            </div>
+          </div>
+        )}
+
+        {modo==="login"&&<button onClick={()=>{setModo("welcome");setError("");}} style={{width:"100%",marginTop:20,padding:10,borderRadius:99,background:"transparent",border:`1px solid ${T.border}`,color:T.charcoal,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:14}}>¿No tienes cuenta? Regístrate</button>}
       </div>
     );
   }
@@ -721,7 +762,141 @@ export default function App(){
                   );
                 })()}
 
-                {/* Agua hoy */}
+                {/* REPORTE SEMANAL */}
+              {(()=>{
+                const hoy=new Date();
+                const domActual=hoy.getDay();
+                const lunesSemana=new Date(hoy);
+                lunesSemana.setDate(hoy.getDate()-(domActual===0?6:domActual-1));
+                const domingoSemana=new Date(lunesSemana);
+                domingoSemana.setDate(lunesSemana.getDate()+6);
+                const fechaLunes=lunesSemana.toISOString().split("T")[0];
+                const fechaDomingo=domingoSemana.toISOString().split("T")[0];
+                // Sessions this week
+                const sesionesSem=sesiones.filter(s=>s.completada).length;
+                const totalSesiones=sesiones.length||1;
+                const sesionesAdhering=sesionesSem/totalSesiones;
+                // Menu adherence (days with menu in this week)
+                const diasConMenu=DIAS.filter(d=>menu.some(m=>m.dia===d)).length;
+                const menuAdherence=diasConMenu/7;
+                // Water this week (assuming agua is today's, estimate weekly)
+                const waterWeekly=agua*7/8;
+                // Habits completed this week
+                const habitosSemana=habitosDiarios.filter(hd=>{
+                  const fecha=new Date(hd.fecha);
+                  return fecha>=lunesSemana&&fecha<=domingoSemana;
+                }).length;
+                const totalHabitosWeek=habitos.length*7;
+                const habitosAdherence=totalHabitosWeek>0?habitosSemana/totalHabitosWeek:0;
+                // Weight change this week
+                const pesoAhora=parseFloat(profile?.peso_actual||0);
+                const pesoInicio=historialPeso.find(p=>{
+                  const d=new Date(p.created_at||p.fecha);
+                  return d>=lunesSemana&&d<=domingoSemana;
+                })||historialPeso[0];
+                const pesoChange=(pesoAhora-parseFloat(pesoInicio?.peso||pesoAhora)).toFixed(1);
+                // Overall adherence calculation
+                const adherenciaGeneral=Math.round(((sesionesAdhering*0.3)+(menuAdherence*0.3)+(habitosAdherence*0.2)+(Math.min(agua/8,1)*0.2))*100);
+                return(
+                  <div style={{background:T.surface,borderRadius:16,padding:"16px",border:`1px solid ${T.border}`,marginBottom:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                      <div>
+                        <div style={{fontSize:11,color:T.sage,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>RESUMEN SEMANAL</div>
+                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:18,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal}}>Tu semana en números</div>
+                        <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{fechaLunes} a {fechaDomingo}</div>
+                      </div>
+                      <button onClick={()=>setShowReporteS(!showReporteS)} style={{padding:"8px 14px",borderRadius:99,border:`1.5px solid ${T.border}`,background:showReporteS?T.sage+"18":"transparent",color:showReporteS?T.sage:T.textMid,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,transition:"all .2s"}}>{showReporteS?"Cerrar":"Ver detalle"}</button>
+                    </div>
+                    {/* Metrics grid */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:showReporteS?12:0}}>
+                      {[
+                        {label:"Sesiones",value:sesionesSem,total:`/${totalSesiones}`,icon:"💪",color:T.sage},
+                        {label:"Agua",value:Math.round(waterWeekly),total:"/56 vasos",icon:"💧",color:T.sky},
+                        {label:"Menús",value:diasConMenu,total:"/7 días",icon:"🥗",color:T.sand},
+                        {label:"Hábitos",value:habitosSemana,total:`/${totalHabitosWeek}`,icon:"✦",color:T.violet},
+                      ].map((m,i)=>(
+                        <div key={i} style={{background:T.card,borderRadius:12,padding:"11px 12px",border:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10}}>
+                          <div style={{fontSize:20}}>{m.icon}</div>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.03em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>{m.label}</div>
+                            <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                              <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:16,fontWeight:600,color:m.color}}>{m.value}</div>
+                              <div style={{fontSize:10,color:T.textSub}}>{m.total}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Weight change badge */}
+                    <div style={{background:pesoChange<0?T.sage+"18":T.clay+"18",borderRadius:12,padding:"11px 12px",border:`1px solid ${pesoChange<0?T.sage+"44":T.clay+"44"}`,display:"flex",alignItems:"center",gap:10,marginBottom:showReporteS?12:0}}>
+                      <div style={{fontSize:20}}>{pesoChange<0?"📉":"📈"}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.03em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>PESO</div>
+                        <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:16,fontWeight:600,color:pesoChange<0?T.sage:T.clay}}>{pesoChange<0?"−":"+"}  {Math.abs(pesoChange)} kg</div>
+                          <div style={{fontSize:10,color:T.textSub}}>esta semana</div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Adherence bar */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:showReporteS?12:0}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.03em",fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>ADHERENCIA GENERAL</div>
+                        <div style={{background:T.border,borderRadius:99,height:6,overflow:"hidden"}}>
+                          <div style={{width:adherenciaGeneral+"%",height:"100%",background:`linear-gradient(90deg,${T.sage},${T.sageL})`,borderRadius:99,transition:"width .6s ease"}}/>
+                        </div>
+                      </div>
+                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:16,fontWeight:600,color:T.sage,minWidth:40,textAlign:"right"}}>{adherenciaGeneral}%</div>
+                    </div>
+                    {/* Expanded view */}
+                    {showReporteS&&(
+                      <div className="fade-in" style={{background:T.bg,borderRadius:12,padding:"12px",marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
+                        <div>
+                          <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>DESGLOSE DETALLADO</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
+                              <div style={{fontSize:13,color:T.charcoal}}>Sesiones entrenamiento</div>
+                              <div style={{fontSize:13,fontWeight:600,color:T.sage}}>{sesionesSem}/{totalSesiones} ({Math.round(sesionesAdhering*100)}%)</div>
+                            </div>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
+                              <div style={{fontSize:13,color:T.charcoal}}>Menús planeados</div>
+                              <div style={{fontSize:13,fontWeight:600,color:T.sand}}>{diasConMenu}/7 ({Math.round(menuAdherence*100)}%)</div>
+                            </div>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
+                              <div style={{fontSize:13,color:T.charcoal}}>Vasos de agua</div>
+                              <div style={{fontSize:13,fontWeight:600,color:T.sky}}>{Math.round(waterWeekly)}/56</div>
+                            </div>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0"}}>
+                              <div style={{fontSize:13,color:T.charcoal}}>Hábitos completados</div>
+                              <div style={{fontSize:13,fontWeight:600,color:T.violet}}>{habitosSemana}/{totalHabitosWeek}</div>
+                            </div>
+                          </div>
+                        </div>
+                        {adherenciaGeneral>=80&&(
+                          <div style={{background:T.sage+"22",borderRadius:10,padding:"10px 12px",border:`1px solid ${T.sage}44`}}>
+                            <div style={{fontSize:12,color:T.sage,fontWeight:600}}>🎉 ¡Excelente semana!</div>
+                            <div style={{fontSize:11,color:T.sageD,marginTop:2}}>Tu consistencia está en el camino correcto. Mantén el ritmo.</div>
+                          </div>
+                        )}
+                        {adherenciaGeneral>=50&&adherenciaGeneral<80&&(
+                          <div style={{background:T.sand+"22",borderRadius:10,padding:"10px 12px",border:`1px solid ${T.sand}44`}}>
+                            <div style={{fontSize:12,color:T.sand,fontWeight:600}}>💪 Buen desempeño</div>
+                            <div style={{fontSize:11,color:T.sand,marginTop:2}}>Puedes mejorar un poco más. Enfócate en lo que se te hace difícil.</div>
+                          </div>
+                        )}
+                        {adherenciaGeneral<50&&(
+                          <div style={{background:T.clay+"22",borderRadius:10,padding:"10px 12px",border:`1px solid ${T.clay}44`}}>
+                            <div style={{fontSize:12,color:T.clay,fontWeight:600}}>📊 Oportunidad de mejora</div>
+                            <div style={{fontSize:11,color:T.clay,marginTop:2}}>Pequeños pasos consistentes te llevarán a donde quieres estar.</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Agua hoy */}
                 <div style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s",display:"flex",alignItems:"center",gap:16}}>
                   <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                     <ProgressRing value={agua} max={8} size={64} stroke={6} color={T.sky}/>
