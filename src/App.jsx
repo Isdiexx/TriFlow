@@ -9,6 +9,7 @@ const supabase = createClient("https://uiktwbtwzotqduzwtjcb.supabase.co","sb_pub
 const LIGHT={bg:"#F7F5F0",surface:"#FDFCFA",card:"#FFFFFF",border:"#EAE4D8",border2:"#D8D0C0",sage:"#7C9E87",sageL:"#A8C4AF",sageD:"#5A7D65",sand:"#C4A882",clay:"#C4856A",sky:"#7EA8C4",violet:"#9B8EC4",violetL:"#C4B8E8",violetD:"#7060A8",charcoal:"#2C2C2C",textMid:"#6B6458",textSub:"#9C9284",muted:"#B8B0A0",scrollbar:"#C8C0B0"};
 const DARK={bg:"#161C18",surface:"#1C2420",card:"#212B25",border:"#2A3830",border2:"#354540",sage:"#7EC494",sageL:"#5A9970",sageD:"#A8D4B4",sand:"#D4B48C",clay:"#D4956A",sky:"#8AB8D4",violet:"#B4A8D8",violetL:"#7868A8",violetD:"#CEC4EC",charcoal:"#EAE6DE",textMid:"#A8A090",textSub:"#6E6860",muted:"#4A4840",scrollbar:"#2A3830"};
 
+const localDate=(d=new Date())=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return`${y}-${m}-${day}`;};
 const TABS=[{id:"inicio",label:"Inicio",icon:"◈"},{id:"habito",label:"Hábito",icon:"▦"},{id:"despensa",label:"Despensa",icon:"⬡"},{id:"entrena",label:"Entrena",icon:"◉"},{id:"asistente",label:"Asistente",icon:"✦"},{id:"perfil",label:"Perfil",icon:"◎"}];
 const DIAS=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const DIAS_C=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
@@ -260,13 +261,13 @@ export default function App(){
       let p=null;
       if(window.location.search.includes("dev")){p={id:uid,nombre:"Diego",apellido:"Test",peso_actual:85,peso_meta:75,objetivo:"bajar_peso",restricciones:["Sin lactosa"]};setProfile(p);setUser({id:uid,email:"test@triflow.com"});}
       else{const{data:prof,error:e1}=await supabase.from("profiles").select("*").eq("id",uid).maybeSingle();if(e1&&e1.code!=="PGRST116"){console.error("Profile load error:",e1);throw e1;}p=prof;if(!p?.nombre){setScreen("onboarding");return;}setProfile(p);}
-      const{data:a}=await supabase.from("agua_diaria").select("*").eq("user_id",uid).eq("fecha",new Date().toISOString().split("T")[0]).maybeSingle();setAgua(a?.vasos||0);
+      const{data:a}=await supabase.from("agua_diaria").select("*").eq("user_id",uid).eq("fecha",localDate()).maybeSingle();setAgua(a?.vasos||0);
       const{data:s}=await supabase.from("stock").select("*").eq("user_id",uid).order("created_at");setStock(s||[]);
       const{data:m}=await supabase.from("menu_semanal").select("*").eq("user_id",uid).order("created_at");setMenu(m||[]);
       const{data:se}=await supabase.from("sesiones").select("*").eq("user_id",uid).order("created_at");setSesiones(se||[]);
       const{data:hp}=await supabase.from("progreso_peso").select("peso,fecha,created_at").eq("user_id",uid).order("created_at",{ascending:true}).limit(60);setHistorialPeso(hp||[]);
       const{data:hab}=await supabase.from("habitos").select("*").eq("user_id",uid).order("created_at");setHabitos(hab||[]);
-      const hoy=new Date().toISOString().split("T")[0];const{data:habDia}=await supabase.from("habito_diario").select("*").eq("user_id",uid).gte("fecha",new Date(new Date().setDate(new Date().getDate()-6)).toISOString().split("T")[0]);setHabitosDiarios(habDia||[]);
+      const hoy=localDate();const{data:habDia}=await supabase.from("habito_diario").select("*").eq("user_id",uid).gte("fecha",new Date(new Date().setDate(new Date().getDate()-6)).toLocaleDateString("en-CA"));setHabitosDiarios(habDia||[]);
       try{const{data:mt}=await supabase.from("menu_diario").select("*").eq("user_id",uid).order("created_at");setMenuTracking(mt||[]);}catch(e){console.warn("menu_diario table may not exist yet:",e.message);setMenuTracking([]);}
       setMsgs([{role:"assistant",text:`Hola, ${p.nombre}! 🌱\n\nSoy tu asistente de TriFlow. Conozco tu perfil:\n\n**Objetivo:** ${p.objetivo?.replace(/_/g," ")}\n**Peso actual:** ${p.peso_actual} kg → Meta: ${p.peso_meta} kg\n**Restricciones:** ${p.restricciones?.length?p.restricciones.join(", "):"Ninguna"}\n\n¿En qué te ayudo hoy?`}]);
       setScreen("app");
@@ -281,13 +282,19 @@ export default function App(){
   useEffect(()=>{const h=(e)=>{if(e.persisted)setLoading(false);};window.addEventListener("pageshow",h);return()=>window.removeEventListener("pageshow",h);},[]);
   const saveProfile=async()=>{setLoading(true);try{const payload={id:user.id,email:user.email,...ob,peso_actual:parseFloat(ob.peso_actual),peso_meta:parseFloat(ob.peso_meta)};let{error:e}=await supabase.from("profiles").upsert(payload);if(e&&/pais/i.test(e.message||"")){console.warn("Columna pais no existe aún en DB, reintentando sin ella");const{pais,...payloadSinPais}=payload;const r=await supabase.from("profiles").upsert(payloadSinPais);e=r.error;}if(e)throw e;await supabase.from("progreso_peso").insert({user_id:user.id,peso:parseFloat(ob.peso_actual)});await loadAll(user.id);}catch(e){console.error("saveProfile error:",e);setError(e.message||"Error al guardar perfil");}setLoading(false);};
   const logout=async()=>{await supabase.auth.signOut();};
-  const updateAgua=async(v)=>{setAgua(v);await supabase.from("agua_diaria").upsert({user_id:user.id,fecha:new Date().toISOString().split("T")[0],vasos:v},{onConflict:"user_id,fecha"});};
+  const updateAgua=async(v)=>{setAgua(v);await supabase.from("agua_diaria").upsert({user_id:user.id,fecha:localDate(),vasos:v},{onConflict:"user_id,fecha"});};
   const registrarPeso=async()=>{
     const p=parseFloat(nuevoPesoVal);
     if(!p||p<20||p>400)return;
-    const hoy=new Date().toISOString().split("T")[0];
-    const{data:row}=await supabase.from("progreso_peso").insert({user_id:user.id,peso:p,fecha:hoy}).select().single();
-    if(row){setHistorialPeso(prev=>[...prev,row]);setProfile(pr=>({...pr,peso_actual:p}));await supabase.from("profiles").update({peso_actual:p}).eq("id",user.id);}
+    const hoy=localDate();
+    const existeHoy=historialPeso.find(h=>h.fecha===hoy);
+    if(existeHoy){
+      const{error}=await supabase.from("progreso_peso").update({peso:p}).eq("id",existeHoy.id);
+      if(!error){setHistorialPeso(prev=>prev.map(h=>h.id===existeHoy.id?{...h,peso:p}:h));setProfile(pr=>({...pr,peso_actual:p}));await supabase.from("profiles").update({peso_actual:p}).eq("id",user.id);}
+    }else{
+      const{data:row,error}=await supabase.from("progreso_peso").insert({user_id:user.id,peso:p,fecha:hoy}).select().single();
+      if(!error&&row){setHistorialPeso(prev=>[...prev,row]);setProfile(pr=>({...pr,peso_actual:p}));await supabase.from("profiles").update({peso_actual:p}).eq("id",user.id);}
+    }
     setNuevoPesoVal("");setShowPesoInput(false);
   };
   const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
@@ -299,7 +306,7 @@ export default function App(){
     if(h){setHabitos(p=>[...p,h]);setNuevoHabitoForm({nombre:"",emoji:"",descripcion:""});setShowNuevoHabito(false);}
   };
   const completarHabitoDia=async(habitoId)=>{
-    const hoy=new Date().toISOString().split("T")[0];
+    const hoy=localDate();
     const existe=habitosDiarios.find(h=>h.habito_id===habitoId&&h.fecha===hoy);
     if(existe){
       await supabase.from("habito_diario").delete().eq("id",existe.id);
@@ -341,19 +348,16 @@ export default function App(){
     setLogsActuales(p=>({...p,[sesionId]:{...p[sesionId],[ejercicio]:p[sesionId][ejercicio].map((s,i)=>i===setIdx?{...s,[field]:value}:s)}}));
   };
   const toggleSetDone=async(sesionId,ejercicio,setIdx)=>{
-    const updated={};
+    let savedLogs=null;
     setLogsActuales(p=>{
       const ejLogs=(p[sesionId]||{})[ejercicio]||[];
       const newEjLogs=ejLogs.map((s,i)=>i===setIdx?{...s,done:!s.done}:s);
       const newSesionLogs={...(p[sesionId]||{}),[ejercicio]:newEjLogs};
-      Object.assign(updated,newSesionLogs);
+      savedLogs=newSesionLogs;
       return{...p,[sesionId]:newSesionLogs};
     });
     setTimeout(async()=>{
-      const currentLogs=logsActuales[sesionId]||{};
-      const ejLogs=(currentLogs[ejercicio]||[]).map((s,i)=>i===setIdx?{...s,done:!s.done}:s);
-      const newLogs={...currentLogs,[ejercicio]:ejLogs};
-      await supabase.from("sesiones").update({logs:newLogs}).eq("id",sesionId);
+      if(savedLogs)await supabase.from("sesiones").update({logs:savedLogs}).eq("id",sesionId);
     },300);
   };
   const finalizarSesion=async(sesionId)=>{
@@ -420,7 +424,7 @@ export default function App(){
   const btn=(bg,x={})=>({width:"100%",padding:SPACING.lg,borderRadius:BORDER_RADIUS.full,background:bg,border:"none",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:TRANSITIONS.fast,...x});
 
   const hoyIdx=new Date().getDay()===0?6:new Date().getDay()-1;
-  const menuHoy=menu.find(m=>m.dia===DIAS[hoyIdx])||menu[0];
+  const menuHoy=menu.find(m=>m.dia===DIAS[hoyIdx])||null;
   const stockCritico=stock.filter(s=>s.cantidad<=(s.minimo||0));
   const sesPorSemana=(n)=>sesiones.filter(s=>s.grupo?.startsWith(`Sem ${n}`));
   const onboardingSlides=[{emoji:"🌱",title:"Organiza tu cambio",desc:"Perfil personalizado según tus objetivos y restricciones"},{emoji:"🥗",title:"Tu alimentación, ordenada",desc:"Menú semanal generado con IA basado en tu despensa"},{emoji:"✦",title:"Con un profesional real",desc:"Tu asistente IA entrena contigo y adapta planes"}];
@@ -627,23 +631,24 @@ export default function App(){
                 </div>
               )}
               {habitos.length>0&&(()=>{
-                const hoy=new Date().toISOString().split("T")[0];
+                const hoy=localDate();
                 const hoyIdx=new Date().getDay();
-                const hace7=new Date(new Date().setDate(new Date().getDate()-6)).toISOString().split("T")[0];
+                const hace7=new Date(new Date().setDate(new Date().getDate()-6)).toLocaleDateString("en-CA");
                 // Completadas hoy
                 const completadasHoy=habitosDiarios.filter(h=>h.fecha===hoy).length;
                 // Semana actual (últimos 7 días)
                 const completadasSem=habitosDiarios.filter(h=>h.fecha>=hace7).reduce((a,v)=>{const k=v.fecha;return{...a,[k]:(a[k]||0)+1};},{});
                 const hoyDate2=new Date();const hoyDay2=hoyDate2.getDay();const mondayOff=hoyDay2===0?-6:1-hoyDay2;const lunesDate=new Date(hoyDate2);lunesDate.setDate(hoyDate2.getDate()+mondayOff);
-                const diasSem=Array.from({length:7},(_,i)=>{const d=new Date(lunesDate);d.setDate(lunesDate.getDate()+i);const f=d.toISOString().split("T")[0];return{fecha:f,completadas:completadasSem[f]||0,esHoy:f===hoy};});
+                const diasSem=Array.from({length:7},(_,i)=>{const d=new Date(lunesDate);d.setDate(lunesDate.getDate()+i);const f=d.toLocaleDateString("en-CA");return{fecha:f,completadas:completadasSem[f]||0,esHoy:f===hoy};});
                 // Semana anterior
-                const hace14=new Date(new Date().setDate(new Date().getDate()-13)).toISOString().split("T")[0];
+                const hace14=new Date(new Date().setDate(new Date().getDate()-13)).toLocaleDateString("en-CA");
                 const completadasSemAnt=habitosDiarios.filter(h=>h.fecha>=hace14&&h.fecha<hace7).reduce((a,v)=>{const k=v.fecha;return{...a,[k]:(a[k]||0)+1};},{});
                 const totalAnt=Object.values(completadasSemAnt).reduce((a,v)=>a+v,0);
                 const diff=Object.values(completadasSem).reduce((a,v)=>a+v,0)-totalAnt;
                 // Insights motivacionales
                 const insights=["Día perfecto. Tu cuerpo lo recordará — son las pequeñas victorias las que cambian todo.","Consistencia es la clave. Cada día te acerca más a tu meta.","Momentum. Mantén el ritmo y los cambios llegarán solos.","Cada hábito pequeño es un paso gigante hacia quien quieres ser.","Tu esfuerzo de hoy es tu éxito de mañana."];
-                const insight=insights[Math.floor(Math.random()*insights.length)];
+                const dayOfYear=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/(864e5));
+                const insight=insights[dayOfYear%insights.length];
                 return(
                   <div style={{padding:"16px 16px 20px",display:"flex",flexDirection:"column",gap:14,background:T.surface}}>
                     <div>
@@ -672,7 +677,7 @@ export default function App(){
                       const pctSem=maxPosible>0?Math.round((totalSem/maxPosible)*100):0;
                       // Calcular racha de días consecutivos
                       let racha=0;const hoyD=new Date();
-                      for(let i=0;i<30;i++){const d=new Date(hoyD);d.setDate(hoyD.getDate()-i);const f=d.toISOString().split("T")[0];const tieneAlgo=habitosDiarios.some(h=>h.fecha===f);if(tieneAlgo)racha++;else if(i>0)break;}
+                      for(let i=0;i<30;i++){const d=new Date(hoyD);d.setDate(hoyD.getDate()-i);const f=d.toLocaleDateString("en-CA");const tieneAlgo=habitosDiarios.some(h=>h.fecha===f);if(tieneAlgo)racha++;else if(i>0)break;}
                       return(
                         <div style={{display:"flex",gap:10}}>
                           {/* Racha */}
@@ -716,8 +721,11 @@ export default function App(){
                   const tendencia=ultimos.length>=2?parseFloat(ultimos[ultimos.length-1].peso)-parseFloat(ultimos[0].peso):0;
                   const semanas=ultimos.length>=2?Math.max(1,(new Date(ultimos[ultimos.length-1].created_at)-new Date(ultimos[0].created_at))/(7*24*3600*1000)):1;
                   const velSemanal=tendencia/semanas;
-                  const semanasAlObjetivo=velSemanal!==0&&Math.sign(velSemanal)===Math.sign(pm-pa)?Math.abs(diff/velSemanal):null;
-                  const progPct=Math.max(5,Math.min(100,100-(diff/(pa||1)*100)));
+                  const semanasAlObjetivo=velSemanal!==0&&Math.sign(velSemanal)===Math.sign(pm-pa)&&Math.abs(diff/velSemanal)<=52?Math.abs(diff/velSemanal):null;
+                  const pesoInicial=historialPeso.length>0?parseFloat(historialPeso[0].peso):pa;
+                  const totalRange=Math.abs(pesoInicial-pm);
+                  const recorrido=Math.abs(pa-pesoInicial);
+                  const progPct=totalRange>0?Math.max(5,Math.min(100,(recorrido/totalRange)*100)):5;
                   // Filtered data for chart
                   const now=new Date();
                   const filteredData=pesoRango==="all"?historialPeso:historialPeso.filter(d=>{const dd=new Date(d.created_at||d.fecha);const diff2=now-dd;return pesoRango==="7d"?diff2<=7*864e5:pesoRango==="30d"?diff2<=30*864e5:diff2<=90*864e5;});
@@ -826,8 +834,8 @@ export default function App(){
                 lunesSemana.setDate(hoy.getDate()-(domActual===0?6:domActual-1));
                 const domingoSemana=new Date(lunesSemana);
                 domingoSemana.setDate(lunesSemana.getDate()+6);
-                const fechaLunes=lunesSemana.toISOString().split("T")[0];
-                const fechaDomingo=domingoSemana.toISOString().split("T")[0];
+                const fechaLunes=lunesSemana.toLocaleDateString("en-CA");
+                const fechaDomingo=domingoSemana.toLocaleDateString("en-CA");
                 // Sessions this week
                 const sesionesSem=sesiones.filter(s=>s.completada).length;
                 const totalSesiones=sesiones.length||1;
@@ -971,7 +979,7 @@ export default function App(){
 
                 {/* Menú hoy */}
                 {menuHoy?(()=>{
-                  const hoyFecha=new Date().toISOString().split("T")[0];
+                  const hoyFecha=localDate();
                   const comidasHoyKeys=["desayuno","almuerzo","snack","cena"].filter(k=>menuHoy[k]);
                   const comidasHoyDone=comidasHoyKeys.filter(k=>{const t=menuTracking.find(tr=>tr.fecha===hoyFecha&&tr.comida===k);return t?.completada;}).length;
                   return(
@@ -1057,7 +1065,7 @@ export default function App(){
                   </div>
                 ):(()=>{
                   const md=menu.find(m=>m.dia===DIAS[diaMenu])||menu[Math.min(diaMenu,menu.length-1)];
-                  const hoyDate=new Date();const diffDia=diaMenu-hoyIdx;const fechaDia=(()=>{const d=new Date(hoyDate);d.setDate(hoyDate.getDate()+diffDia);return d.toISOString().split("T")[0];})();
+                  const hoyDate=new Date();const diffDia=diaMenu-hoyIdx;const fechaDia=(()=>{const d=new Date(hoyDate);d.setDate(hoyDate.getDate()+diffDia);return d.toLocaleDateString("en-CA");})();
                   const comidasCompletadas=[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].filter(([,,key])=>md?.[key]).filter(([,,key])=>{const t=menuTracking.find(tr=>tr.fecha===fechaDia&&tr.comida===key);return t?.completada;}).length;
                   const comidasTotal=[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].filter(([,,key])=>md?.[key]).length;
                   return md?(<>
@@ -1257,7 +1265,7 @@ export default function App(){
               {sesionAbierta?(()=>{
                 /* ═══ VISTA DETALLADA DE SESIÓN (HARBIZ-STYLE) ═══ */
                 const s=sesiones.find(x=>x.id===sesionAbierta);
-                if(!s){setSesionAbierta(null);return null;}
+                if(!s)return <div style={{padding:20,textAlign:"center"}}><div style={{fontSize:14,color:T.textSub,marginBottom:12}}>Sesión no encontrada</div><button onClick={()=>setSesionAbierta(null)} style={{padding:"10px 20px",borderRadius:99,background:T.violet,border:"none",color:"#fff",fontSize:14,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← Volver</button></div>;
                 const ejercicios=parsarEjercicios(s.descripcion);
                 const semNum=parseInt((s.grupo||"").match(/\d+/)?.[0]||"1");
                 const grupoNombre=(s.grupo||"").replace(/^Sem \d+ · /,"");
@@ -1353,7 +1361,7 @@ export default function App(){
                           {rpeVal>0&&<div style={{fontSize:13,fontWeight:600,color:rpeColors[rpeVal],marginBottom:10,textAlign:"center"}}>{rpeLabels[rpeVal]}</div>}
                           {/* Slider */}
                           <div style={{position:"relative",padding:"8px 0"}}>
-                            <input type="range" min="1" max="10" step="1" value={rpeVal||5} onChange={async(e)=>{const v=parseInt(e.target.value);const{error}=await supabase.from("sesiones").update({rpe:v}).eq("id",s.id);if(!error)setSesiones(p=>p.map(x=>x.id===s.id?{...x,rpe:v}:x));}} style={{width:"100%",height:6,borderRadius:99,appearance:"none",WebkitAppearance:"none",background:`linear-gradient(90deg, ${T.sage} 0%, ${T.sand} 50%, ${T.clay} 100%)`,outline:"none",cursor:"pointer"}}/>
+                            <input type="range" min="1" max="10" step="1" value={rpeVal||5} onChange={(e)=>{const v=parseInt(e.target.value);setSesiones(p=>p.map(x=>x.id===s.id?{...x,rpe:v}:x));}} onMouseUp={async(e)=>{const v=parseInt(e.target.value);await supabase.from("sesiones").update({rpe:v}).eq("id",s.id);}} onTouchEnd={async(e)=>{const v=parseInt(e.target.value);await supabase.from("sesiones").update({rpe:v}).eq("id",s.id);}} style={{width:"100%",height:6,borderRadius:99,appearance:"none",WebkitAppearance:"none",background:`linear-gradient(90deg, ${T.sage} 0%, ${T.sand} 50%, ${T.clay} 100%)`,outline:"none",cursor:"pointer"}}/>
                             <style>{`input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:99px;background:${T.surface};border:3px solid ${rpeColors[rpeVal]||T.violet};box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer;transition:border-color .2s}input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:99px;background:${T.surface};border:3px solid ${rpeColors[rpeVal]||T.violet};box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer}`}</style>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.textSub,marginTop:2}}>
