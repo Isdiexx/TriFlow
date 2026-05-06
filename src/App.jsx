@@ -613,11 +613,9 @@ export default function App(){
                 {/* Day tracker */}
                 <div style={{display:"flex",gap:5,marginTop:12}}>
                   {DIAS_C.map((d,i)=>{
-                    const tieneMenu=menu.some(m=>m.dia===DIAS[i]);
                     const esHoy=i===hoyIdx;
                     return(<div key={i} style={{flex:1,textAlign:"center"}}>
-                      <div style={{width:"100%",height:4,borderRadius:99,background:tieneMenu?T.sage:esHoy?T.sageL:T.border,marginBottom:4,transition:"background .3s"}}/>
-                      <div style={{fontSize:11,color:esHoy?"#fff":T.textSub,fontWeight:esHoy?600:400,background:esHoy?T.sage:"transparent",borderRadius:99,padding:esHoy?"2px 0":"0",transition:"all .3s"}}>{d}</div>
+                      <div style={{fontSize:11,color:esHoy?"#fff":T.textSub,fontWeight:esHoy?600:400,background:esHoy?T.sage:"transparent",borderRadius:99,padding:esHoy?"3px 0":"3px 0",transition:"all .3s"}}>{d}</div>
                     </div>);
                   })}
                 </div>
