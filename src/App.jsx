@@ -191,6 +191,7 @@ export default function App(){
   const[accionSugerida,setAccionSugerida]=useState(null);const[showWarningEntrenamiento,setShowWarningEntrenamiento]=useState(false);const[showObjetivoModal,setShowObjetivoModal]=useState(false);
   const[habitos,setHabitos]=useState([]);const[habitosDiarios,setHabitosDiarios]=useState([]);const[showNuevoHabito,setShowNuevoHabito]=useState(false);const[nuevoHabitoForm,setNuevoHabitoForm]=useState({nombre:"",emoji:"",descripcion:""});
   const[showReporteS,setShowReporteS]=useState(false);
+  const[menuTracking,setMenuTracking]=useState([]);const[comentarioAbierto,setComentarioAbierto]=useState(null);const[comentarioTemp,setComentarioTemp]=useState("");
   const chatBottom=useRef(null);const scannerRef=useRef(null);
   const T=dark?DARK:LIGHT;
   const toggleTheme=()=>setDark(d=>!d);
@@ -266,6 +267,7 @@ export default function App(){
       const{data:hp}=await supabase.from("progreso_peso").select("peso,fecha,created_at").eq("user_id",uid).order("created_at",{ascending:true}).limit(60);setHistorialPeso(hp||[]);
       const{data:hab}=await supabase.from("habitos").select("*").eq("user_id",uid).order("created_at");setHabitos(hab||[]);
       const hoy=new Date().toISOString().split("T")[0];const{data:habDia}=await supabase.from("habito_diario").select("*").eq("user_id",uid).gte("fecha",new Date(new Date().setDate(new Date().getDate()-6)).toISOString().split("T")[0]);setHabitosDiarios(habDia||[]);
+      try{const{data:mt}=await supabase.from("menu_diario").select("*").eq("user_id",uid).order("created_at");setMenuTracking(mt||[]);}catch(e){console.warn("menu_diario table may not exist yet:",e.message);setMenuTracking([]);}
       setMsgs([{role:"assistant",text:`Hola, ${p.nombre}! 🌱\n\nSoy tu asistente de TriFlow. Conozco tu perfil:\n\n**Objetivo:** ${p.objetivo?.replace(/_/g," ")}\n**Peso actual:** ${p.peso_actual} kg → Meta: ${p.peso_meta} kg\n**Restricciones:** ${p.restricciones?.length?p.restricciones.join(", "):"Ninguna"}\n\n¿En qué te ayudo hoy?`}]);
       setScreen("app");
     }catch(e){
@@ -378,6 +380,36 @@ export default function App(){
     }
   };
   const agregarSugerencia=async(item,idx)=>{const payload={user_id:user.id,nombre:item.nombre,cantidad:parseFloat(item.cantidad)||0,unidad:item.unidad||"g"};const{data,error}=await supabase.from("stock").insert(payload).select().single();if(error){setMenuError(error.message);return;}setStock(p=>[...p,data]);setListaCompra(p=>p.filter((_,i)=>i!==idx));};
+  const toggleComidaCompleta=async(fecha,comida)=>{
+    try{
+      const existing=menuTracking.find(t=>t.fecha===fecha&&t.comida===comida);
+      if(existing){
+        const newVal=!existing.completada;
+        const{error}=await supabase.from("menu_diario").update({completada:newVal}).eq("id",existing.id);
+        if(error)throw error;
+        setMenuTracking(p=>p.map(t=>t.id===existing.id?{...t,completada:newVal}:t));
+      }else{
+        const{data,error}=await supabase.from("menu_diario").insert({user_id:user.id,fecha,comida,completada:true,comentario:""}).select().single();
+        if(error)throw error;
+        if(data)setMenuTracking(p=>[...p,data]);
+      }
+    }catch(e){console.error("toggleComidaCompleta error:",e);}
+  };
+  const guardarComentarioComida=async(fecha,comida,comentario)=>{
+    try{
+      const existing=menuTracking.find(t=>t.fecha===fecha&&t.comida===comida);
+      if(existing){
+        const{error}=await supabase.from("menu_diario").update({comentario}).eq("id",existing.id);
+        if(error)throw error;
+        setMenuTracking(p=>p.map(t=>t.id===existing.id?{...t,comentario}:t));
+      }else{
+        const{data,error}=await supabase.from("menu_diario").insert({user_id:user.id,fecha,comida,completada:false,comentario}).select().single();
+        if(error)throw error;
+        if(data)setMenuTracking(p=>[...p,data]);
+      }
+    }catch(e){console.error("guardarComentarioComida error:",e);}
+    setComentarioAbierto(null);setComentarioTemp("");
+  };
   const lookupProductByBarcode=async(barcode)=>{try{const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);if(!res.ok)return null;const data=await res.json();if(!data.product)return null;return{nombre:data.product.product_name||barcode,imagen:data.product.image_front_url||null,marca:data.product.brands||"",energia:data.product.nutriments?.energy_kcal_100g||null,proteinas:data.product.nutriments?.proteins_100g||null,grasas:data.product.nutriments?.fat_100g||null,carbohidratos:data.product.nutriments?.carbohydrates_100g||null};}catch(e){console.error("Open Food Facts error:",e);return null;}};
   const handleScanSuccess=async(decodedText)=>{setScannedCode(decodedText);setScanLoading(true);const product=await lookupProductByBarcode(decodedText);setScannedProduct(product||{nombre:decodedText,cantidad:"1",unidad:"un",imagen:null});setScanLoading(false);};
   const confirmarProductoEscaneado=async()=>{if(!scannedProduct?.nombre)return;const payload={user_id:user.id,nombre:scannedProduct.nombre,cantidad:parseFloat(scannedProduct.cantidad)||1,unidad:scannedProduct.unidad||"un"};const{data}=await supabase.from("stock").insert(payload).select().single();if(data){setStock(p=>[...p,data]);setShowScanner(false);setScannedCode("");setScannedProduct(null);}};
@@ -926,20 +958,30 @@ export default function App(){
                 </div>
 
                 {/* Menú hoy */}
-                {menuHoy?(
+                {menuHoy?(()=>{
+                  const hoyFecha=new Date().toISOString().split("T")[0];
+                  const comidasHoyKeys=["desayuno","almuerzo","snack","cena"].filter(k=>menuHoy[k]);
+                  const comidasHoyDone=comidasHoyKeys.filter(k=>{const t=menuTracking.find(tr=>tr.fecha===hoyFecha&&tr.comida===k);return t?.completada;}).length;
+                  return(
                   <div style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                      <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace"}}>MENÚ DE HOY</div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace"}}>MENÚ DE HOY</div>
+                        {comidasHoyKeys.length>0&&<span style={{fontSize:11,color:comidasHoyDone===comidasHoyKeys.length?T.sage:T.textSub,fontWeight:600}}>{comidasHoyDone}/{comidasHoyKeys.length}</span>}
+                      </div>
                       <button onClick={()=>setTab("habito")} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.sage,fontFamily:"'DM Sans',sans-serif"}}>Ver todo →</button>
                     </div>
-                    {[["🌅",menuHoy.desayuno],["☀️",menuHoy.almuerzo],["🍎",menuHoy.snack],["🌙",menuHoy.cena]].filter(([,v])=>v).map(([emoji,texto],i,arr)=>(
-                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",borderBottom:i<arr.length-1?`1px solid ${T.border}`:"none"}}>
+                    {[["🌅",menuHoy.desayuno,"desayuno"],["☀️",menuHoy.almuerzo,"almuerzo"],["🍎",menuHoy.snack,"snack"],["🌙",menuHoy.cena,"cena"]].filter(([,v])=>v).map(([emoji,texto,comidaKey],i,arr)=>{
+                      const done=menuTracking.find(tr=>tr.fecha===hoyFecha&&tr.comida===comidaKey)?.completada;
+                      return(
+                      <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",borderBottom:i<arr.length-1?`1px solid ${T.border}`:"none",opacity:done?.6:1}}>
                         <span style={{fontSize:14,marginTop:1}}>{emoji}</span>
-                        <div style={{fontSize:14,color:T.charcoal,flex:1,lineHeight:1.35}}>{texto}</div>
+                        <div style={{fontSize:14,color:done?T.textMid:T.charcoal,flex:1,lineHeight:1.35,textDecoration:done?"line-through":"none"}}>{texto}</div>
+                        {done&&<span style={{fontSize:10,color:T.sage,marginTop:2}}>✓</span>}
                       </div>
-                    ))}
+                    );})}
                   </div>
-                ):(
+                );})():(
                   <div style={{background:T.sage+"14",borderRadius:16,padding:"16px 18px",border:`1px solid ${T.sage}22`,textAlign:"center"}}>
                     <div style={{fontSize:14,color:T.sageD,marginBottom:8}}>No hay menú generado aún</div>
                     <button onClick={()=>setTab("habito")} style={{padding:"8px 18px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Generar menú ✦</button>
@@ -1003,16 +1045,66 @@ export default function App(){
                   </div>
                 ):(()=>{
                   const md=menu.find(m=>m.dia===DIAS[diaMenu])||menu[Math.min(diaMenu,menu.length-1)];
+                  const hoyDate=new Date();const diffDia=diaMenu-hoyIdx;const fechaDia=(()=>{const d=new Date(hoyDate);d.setDate(hoyDate.getDate()+diffDia);return d.toISOString().split("T")[0];})();
+                  const comidasCompletadas=[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].filter(([,,key])=>md?.[key]).filter(([,,key])=>{const t=menuTracking.find(tr=>tr.fecha===fechaDia&&tr.comida===key);return t?.completada;}).length;
+                  const comidasTotal=[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].filter(([,,key])=>md?.[key]).length;
                   return md?(<>
-                    {[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].map(([emoji,label,key])=>md[key]&&(
-                      <div key={key} style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
-                          <span style={{fontSize:14}}>{emoji}</span>
-                          <span style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace"}}>{label}</span>
+                    {comidasTotal>0&&(
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:comidasCompletadas===comidasTotal&&comidasTotal>0?T.sage+"18":T.card,borderRadius:12,border:`1px solid ${comidasCompletadas===comidasTotal&&comidasTotal>0?T.sage+"44":T.border}`,marginBottom:2}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:12}}>{comidasCompletadas===comidasTotal?"✅":"🍽️"}</span>
+                          <span style={{fontSize:12,color:comidasCompletadas===comidasTotal?T.sage:T.textMid,fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>
+                            {comidasCompletadas===comidasTotal&&comidasTotal>0?"¡Día completado!":` ${comidasCompletadas} de ${comidasTotal} comidas`}
+                          </span>
                         </div>
-                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,color:T.charcoal,lineHeight:1.4}}>{md[key]}</div>
+                        <div style={{display:"flex",gap:4}}>
+                          {Array.from({length:comidasTotal},(_,i)=>(
+                            <div key={i} style={{width:8,height:8,borderRadius:99,background:i<comidasCompletadas?T.sage:T.border,transition:"all .3s"}}/>
+                          ))}
+                        </div>
                       </div>
-                    ))}
+                    )}
+                    {[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].map(([emoji,label,key])=>{
+                      if(!md[key])return null;
+                      const tracking=menuTracking.find(t=>t.fecha===fechaDia&&t.comida===key);
+                      const completada=tracking?.completada||false;
+                      const comentario=tracking?.comentario||"";
+                      const commentKey=`${fechaDia}-${key}`;
+                      const isCommentOpen=comentarioAbierto===commentKey;
+                      return(
+                      <div key={key} style={{background:completada?T.sage+"0C":T.card,borderRadius:16,padding:"16px",border:`1px solid ${completada?T.sage+"44":T.border}`,transition:"all .4s"}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                          <div style={{display:"flex",alignItems:"center",gap:7}}>
+                            <span style={{fontSize:14}}>{emoji}</span>
+                            <span style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace"}}>{label}</span>
+                            {completada&&<span style={{fontSize:10,color:T.sage,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>✓ Comido</span>}
+                          </div>
+                          <button onClick={()=>toggleComidaCompleta(fechaDia,key)} style={{width:28,height:28,borderRadius:99,border:`2px solid ${completada?T.sage:T.border2}`,background:completada?T.sage:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .25s",flexShrink:0,padding:0}}>
+                            {completada&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                          </button>
+                        </div>
+                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,color:completada?T.textMid:T.charcoal,lineHeight:1.4,textDecoration:completada?"line-through":"none",opacity:completada?.7:1,transition:"all .3s"}}>{md[key]}</div>
+                        {comentario&&!isCommentOpen&&(
+                          <div onClick={()=>{setComentarioAbierto(commentKey);setComentarioTemp(comentario);}} style={{marginTop:10,padding:"8px 12px",background:T.sand+"14",borderRadius:10,border:`1px solid ${T.sand}33`,cursor:"pointer"}}>
+                            <div style={{fontSize:10,color:T.sand,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.04em",marginBottom:3}}>📝 NOTA</div>
+                            <div style={{fontSize:13,color:T.textMid,lineHeight:1.4}}>{comentario}</div>
+                          </div>
+                        )}
+                        {isCommentOpen?(
+                          <div style={{marginTop:10}}>
+                            <textarea value={comentarioTemp} onChange={e=>setComentarioTemp(e.target.value)} placeholder="Ej: Cambié el pollo por atún porque no tenía..." rows={3} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${T.sage}44`,background:T.surface,fontSize:13,color:T.charcoal,fontFamily:"'DM Sans',sans-serif",resize:"vertical",outline:"none",lineHeight:1.4}}/>
+                            <div style={{display:"flex",gap:8,marginTop:8}}>
+                              <button onClick={()=>guardarComentarioComida(fechaDia,key,comentarioTemp)} style={{flex:1,padding:"8px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Guardar nota</button>
+                              <button onClick={()=>{setComentarioAbierto(null);setComentarioTemp("");}} style={{padding:"8px 14px",borderRadius:99,background:T.border,border:"none",color:T.textMid,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Cancelar</button>
+                            </div>
+                          </div>
+                        ):(
+                          <button onClick={()=>{setComentarioAbierto(commentKey);setComentarioTemp(comentario);}} style={{marginTop:10,background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:5,padding:0}}>
+                            <span style={{fontSize:12,color:T.textSub}}>{comentario?"✏️ Editar nota":"💬 Agregar nota"}</span>
+                          </button>
+                        )}
+                      </div>
+                    );})}
                   </>):null;
                 })()}
                 {listaCompra.length>0&&(
