@@ -183,7 +183,7 @@ export default function App(){
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
   const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");const[showPesoDetalle,setShowPesoDetalle]=useState(false);const[pesoRango,setPesoRango]=useState("all");
   const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
-  const[diaMenu,setDiaMenu]=useState(0);const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
+  const[diaMenu,setDiaMenu]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
   const[showScanner,setShowScanner]=useState(false);const[scannedCode,setScannedCode]=useState("");const[scannedProduct,setScannedProduct]=useState(null);const[scanLoading,setScanLoading]=useState(false);
   const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);
   const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");
@@ -1068,7 +1068,7 @@ export default function App(){
                     <button onClick={generarMenu} disabled={menuLoading} style={{padding:"12px 24px",borderRadius:99,background:menuLoading?T.muted:T.sage,border:"none",color:"#fff",fontSize:14,cursor:menuLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif"}}>{menuLoading?"Generando menú...":"Generar menú semanal ✦"}</button>
                   </div>
                 ):(()=>{
-                  const md=menu.find(m=>m.dia===DIAS[diaMenu])||menu[Math.min(diaMenu,menu.length-1)];
+                  const md=menu.find(m=>m.dia===DIAS[diaMenu])||null;
                   const hoyDate=new Date();const diffDia=diaMenu-hoyIdx;const fechaDia=(()=>{const d=new Date(hoyDate);d.setDate(hoyDate.getDate()+diffDia);return d.toLocaleDateString("en-CA");})();
                   const comidasCompletadas=[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].filter(([,,key])=>md?.[key]).filter(([,,key])=>{const t=menuTracking.find(tr=>tr.fecha===fechaDia&&tr.comida===key);return t?.completada;}).length;
                   const comidasTotal=[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].filter(([,,key])=>md?.[key]).length;
