@@ -287,14 +287,18 @@ export default function App(){
     const p=parseFloat(nuevoPesoVal);
     if(!p||p<20||p>400)return;
     const hoy=localDate();
-    const existeHoy=historialPeso.find(h=>h.fecha===hoy);
-    if(existeHoy){
-      const{error}=await supabase.from("progreso_peso").update({peso:p}).eq("id",existeHoy.id);
-      if(!error){setHistorialPeso(prev=>prev.map(h=>h.id===existeHoy.id?{...h,peso:p}:h));setProfile(pr=>({...pr,peso_actual:p}));await supabase.from("profiles").update({peso_actual:p}).eq("id",user.id);}
-    }else{
-      const{data:row,error}=await supabase.from("progreso_peso").insert({user_id:user.id,peso:p,fecha:hoy}).select().single();
-      if(!error&&row){setHistorialPeso(prev=>[...prev,row]);setProfile(pr=>({...pr,peso_actual:p}));await supabase.from("profiles").update({peso_actual:p}).eq("id",user.id);}
-    }
+    try{
+      const existeHoy=historialPeso.find(h=>(h.fecha||"").slice(0,10)===hoy);
+      if(existeHoy){
+        await supabase.from("progreso_peso").update({peso:p}).eq("id",existeHoy.id);
+        setHistorialPeso(prev=>prev.map(h=>h.id===existeHoy.id?{...h,peso:p}:h));
+      }else{
+        const{data:row}=await supabase.from("progreso_peso").insert({user_id:user.id,peso:p,fecha:hoy}).select().single();
+        if(row)setHistorialPeso(prev=>[...prev,row]);
+      }
+      setProfile(pr=>({...pr,peso_actual:p}));
+      await supabase.from("profiles").update({peso_actual:p}).eq("id",user.id);
+    }catch(e){console.error("registrarPeso error:",e);}
     setNuevoPesoVal("");setShowPesoInput(false);
   };
   const agregarProducto=async()=>{if(!nuevoProducto.nombre)return;const{data}=await supabase.from("stock").insert({user_id:user.id,...nuevoProducto,cantidad:parseFloat(nuevoProducto.cantidad)||0}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
