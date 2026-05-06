@@ -601,7 +601,8 @@ export default function App(){
                 const completadasHoy=habitosDiarios.filter(h=>h.fecha===hoy).length;
                 // Semana actual (últimos 7 días)
                 const completadasSem=habitosDiarios.filter(h=>h.fecha>=hace7).reduce((a,v)=>{const k=v.fecha;return{...a,[k]:(a[k]||0)+1};},{});
-                const diasSem=Array.from({length:7},(_,i)=>{const d=new Date(new Date().setDate(new Date().getDate()-6+i));const f=d.toISOString().split("T")[0];return{fecha:f,completadas:completadasSem[f]||0,esHoy:f===hoy};});
+                const hoyDate2=new Date();const hoyDay2=hoyDate2.getDay();const mondayOff=hoyDay2===0?-6:1-hoyDay2;const lunesDate=new Date(hoyDate2);lunesDate.setDate(hoyDate2.getDate()+mondayOff);
+                const diasSem=Array.from({length:7},(_,i)=>{const d=new Date(lunesDate);d.setDate(lunesDate.getDate()+i);const f=d.toISOString().split("T")[0];return{fecha:f,completadas:completadasSem[f]||0,esHoy:f===hoy};});
                 // Semana anterior
                 const hace14=new Date(new Date().setDate(new Date().getDate()-13)).toISOString().split("T")[0];
                 const completadasSemAnt=habitosDiarios.filter(h=>h.fecha>=hace14&&h.fecha<hace7).reduce((a,v)=>{const k=v.fecha;return{...a,[k]:(a[k]||0)+1};},{});
@@ -635,7 +636,7 @@ export default function App(){
                     <div style={{display:"flex",gap:6}}>
                       {diasSem.map((d,i)=>(
                         <div key={d.fecha} style={{flex:1,textAlign:"center"}}>
-                          <div style={{fontSize:11,color:d.esHoy?T.sage:T.textSub,fontWeight:d.esHoy?600:400,marginBottom:3}}>{["D","L","M","M","J","V","S"][d.fecha.split("-")[2]%7]}</div>
+                          <div style={{fontSize:11,color:d.esHoy?T.sage:T.textSub,fontWeight:d.esHoy?600:400,marginBottom:3}}>{["L","M","M","J","V","S","D"][i]}</div>
                           <div style={{width:"100%",aspectRatio:"1",borderRadius:10,background:d.completadas>0?T.sage+"22":T.border,border:`1.5px solid ${d.completadas>0?T.sage:d.esHoy?T.sageL:T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:d.completadas>0?T.sage:T.textMid,transition:"all .2s"}}>
                             {d.completadas||0}
                           </div>
