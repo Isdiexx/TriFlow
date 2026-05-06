@@ -636,10 +636,11 @@ export default function App(){
                     <div style={{display:"flex",gap:6}}>
                       {diasSem.map((d,i)=>(
                         <div key={d.fecha} style={{flex:1,textAlign:"center"}}>
-                          <div style={{fontSize:11,color:d.esHoy?T.sage:T.textSub,fontWeight:d.esHoy?600:400,marginBottom:3}}>{["L","M","M","J","V","S","D"][i]}</div>
-                          <div style={{width:"100%",aspectRatio:"1",borderRadius:10,background:d.completadas>0?T.sage+"22":T.border,border:`1.5px solid ${d.completadas>0?T.sage:d.esHoy?T.sageL:T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:d.completadas>0?T.sage:T.textMid,transition:"all .2s"}}>
+                          <div style={{fontSize:11,color:d.esHoy?T.sage:T.textSub,fontWeight:d.esHoy?700:400,marginBottom:3}}>{["L","M","M","J","V","S","D"][i]}</div>
+                          <div style={{width:"100%",aspectRatio:"1",borderRadius:10,background:d.esHoy&&d.completadas>0?T.sage+"33":d.completadas>0?T.sage+"22":d.esHoy?T.sage+"12":T.border,border:`2px solid ${d.esHoy?T.sage:d.completadas>0?T.sage+"66":T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:d.esHoy?13:11,fontWeight:d.esHoy?700:600,color:d.esHoy?T.sage:d.completadas>0?T.sage:T.textMid,transition:"all .2s",boxShadow:d.esHoy?"0 0 0 3px "+T.sage+"22":"none",position:"relative"}}>
                             {d.completadas||0}
                           </div>
+                          {d.esHoy&&<div style={{width:5,height:5,borderRadius:99,background:T.sage,margin:"4px auto 0"}}/>}
                         </div>
                       ))}
                     </div>
