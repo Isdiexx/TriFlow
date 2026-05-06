@@ -820,7 +820,7 @@ export default function App(){
                       <button onClick={()=>setShowReporteS(!showReporteS)} style={{padding:"8px 14px",borderRadius:99,border:`1.5px solid ${T.border}`,background:showReporteS?T.sage+"18":"transparent",color:showReporteS?T.sage:T.textMid,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,transition:"all .2s"}}>{showReporteS?"Cerrar":"Ver detalle"}</button>
                     </div>
                     {/* Metrics grid */}
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:showReporteS?12:0}}>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:10}}>
                       {[
                         {label:"Sesiones",value:sesionesSem,total:`/${totalSesiones}`,icon:"💪",color:T.sage},
                         {label:"Agua",value:Math.round(waterWeekly),total:"/56 vasos",icon:"💧",color:T.sky},
@@ -840,7 +840,7 @@ export default function App(){
                       ))}
                     </div>
                     {/* Weight change badge */}
-                    <div style={{background:pesoChange<0?T.sage+"18":T.clay+"18",borderRadius:12,padding:"11px 12px",border:`1px solid ${pesoChange<0?T.sage+"44":T.clay+"44"}`,display:"flex",alignItems:"center",gap:10,marginBottom:showReporteS?12:0}}>
+                    <div style={{background:pesoChange<0?T.sage+"18":T.clay+"18",borderRadius:12,padding:"11px 12px",border:`1px solid ${pesoChange<0?T.sage+"44":T.clay+"44"}`,display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                       <div style={{fontSize:20}}>{pesoChange<0?"📉":"📈"}</div>
                       <div style={{flex:1}}>
                         <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.03em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>PESO</div>
@@ -851,7 +851,7 @@ export default function App(){
                       </div>
                     </div>
                     {/* Adherence bar */}
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:showReporteS?12:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
                       <div style={{flex:1}}>
                         <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.03em",fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>ADHERENCIA GENERAL</div>
                         <div style={{background:T.border,borderRadius:99,height:6,overflow:"hidden"}}>
