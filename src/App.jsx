@@ -1523,9 +1523,9 @@ export default function App(){
             {/* Selector de emoji */}
             <div style={{marginBottom:14}}>
               <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>EMOJI</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                 {["🧘","📖","🏃","💪","🥗","😴","🧠","🎯","❤️","⚡","🌱","📱"].map(e=>(
-                  <button key={e} onClick={()=>setNuevoHabitoForm({...nuevoHabitoForm,emoji:e})} style={{fontSize:20,padding:"12px",borderRadius:10,border:`2px solid ${nuevoHabitoForm.emoji===e?T.sage:T.border}`,background:nuevoHabitoForm.emoji===e?T.sage+"18":"transparent",cursor:"pointer",transition:"all .2s"}}>{e}</button>
+                  <button key={e} onClick={()=>setNuevoHabitoForm({...nuevoHabitoForm,emoji:e})} style={{fontSize:18,padding:"10px",borderRadius:10,border:`2px solid ${nuevoHabitoForm.emoji===e?T.sage:T.border}`,background:nuevoHabitoForm.emoji===e?T.sage+"18":"transparent",cursor:"pointer",transition:"all .2s"}}>{e}</button>
                 ))}
               </div>
             </div>
