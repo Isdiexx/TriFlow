@@ -665,30 +665,41 @@ export default function App(){
                       })}
                       <button onClick={()=>setShowNuevoHabito(true)} style={{padding:"10px 14px",borderRadius:12,border:`1.5px dashed ${T.border}`,background:"transparent",display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:T.textMid,fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>+ Nuevo hábito</button>
                     </div>
-                    {/* Calendario semanal */}
-                    <div style={{display:"flex",gap:6}}>
-                      {diasSem.map((d,i)=>(
-                        <div key={d.fecha} style={{flex:1,textAlign:"center"}}>
-                          <div style={{fontSize:11,color:d.esHoy?T.sage:T.textSub,fontWeight:d.esHoy?700:400,marginBottom:3}}>{["L","M","M","J","V","S","D"][i]}</div>
-                          <div style={{width:"100%",aspectRatio:"1",borderRadius:10,background:d.esHoy&&d.completadas>0?T.sage+"33":d.completadas>0?T.sage+"22":d.esHoy?T.sage+"12":T.border,border:`2px solid ${d.esHoy?T.sage:d.completadas>0?T.sage+"66":T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:d.esHoy?13:11,fontWeight:d.esHoy?700:600,color:d.esHoy?T.sage:d.completadas>0?T.sage:T.textMid,transition:"all .2s",boxShadow:d.esHoy?"0 0 0 3px "+T.sage+"22":"none",position:"relative"}}>
-                            {d.completadas||0}
+                    {/* Racha + progreso semanal compacto */}
+                    {(()=>{
+                      const totalSem=Object.values(completadasSem).reduce((a,v)=>a+v,0);
+                      const maxPosible=habitos.length*7;
+                      const pctSem=maxPosible>0?Math.round((totalSem/maxPosible)*100):0;
+                      // Calcular racha de días consecutivos
+                      let racha=0;const hoyD=new Date();
+                      for(let i=0;i<30;i++){const d=new Date(hoyD);d.setDate(hoyD.getDate()-i);const f=d.toISOString().split("T")[0];const tieneAlgo=habitosDiarios.some(h=>h.fecha===f);if(tieneAlgo)racha++;else if(i>0)break;}
+                      return(
+                        <div style={{display:"flex",gap:10}}>
+                          {/* Racha */}
+                          <div style={{flex:1,background:racha>=3?T.sage+"14":T.card,borderRadius:14,padding:"14px",border:`1px solid ${racha>=3?T.sage+"33":T.border}`,display:"flex",alignItems:"center",gap:12}}>
+                            <div style={{fontSize:28,flexShrink:0}}>{racha>=7?"🔥":racha>=3?"⚡":"✨"}</div>
+                            <div>
+                              <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:700,letterSpacing:"-0.03em",color:racha>=3?T.sage:T.charcoal,lineHeight:1}}>{racha}</div>
+                              <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{racha===1?"día de racha":"días de racha"}</div>
+                            </div>
                           </div>
-                          {d.esHoy&&<div style={{width:5,height:5,borderRadius:99,background:T.sage,margin:"4px auto 0"}}/>}
+                          {/* Semana */}
+                          <div style={{flex:1,background:T.card,borderRadius:14,padding:"14px",border:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:12}}>
+                            <div style={{position:"relative",width:44,height:44,flexShrink:0}}>
+                              <svg width={44} height={44} style={{transform:"rotate(-90deg)"}}>
+                                <circle cx={22} cy={22} r={18} fill="none" stroke={T.border} strokeWidth={4}/>
+                                <circle cx={22} cy={22} r={18} fill="none" stroke={T.sage} strokeWidth={4} strokeDasharray={113} strokeDashoffset={113*(1-pctSem/100)} strokeLinecap="round" style={{transition:"stroke-dashoffset .8s ease"}}/>
+                              </svg>
+                              <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:T.sage}}>{pctSem}%</div>
+                            </div>
+                            <div>
+                              <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:16,fontWeight:600,color:T.charcoal,lineHeight:1}}>{totalSem}<span style={{fontSize:12,color:T.textSub,fontWeight:400}}>/{maxPosible}</span></div>
+                              <div style={{fontSize:11,color:diff>0?T.sage:diff<0?T.clay:T.textSub,marginTop:2,fontWeight:500}}>{diff>0?"↑ +"+diff:diff<0?"↓ "+diff:"= 0"} vs ant.</div>
+                            </div>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                    {/* Stats y comparativa */}
-                    <div style={{background:T.card,borderRadius:14,padding:"12px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div>
-                        <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>COMPLETADAS</div>
-                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.sage}}>{Object.values(completadasSem).reduce((a,v)=>a+v,0)}</div>
-                      </div>
-                      <div style={{textAlign:"right"}}>
-                        <div style={{fontSize:11,color:T.textSub}}>esta semana</div>
-                        <div style={{fontSize:14,fontWeight:600,color:diff>0?T.sage:diff<0?T.clay:T.textSub,marginTop:2}}>{diff>0?"+"+diff:diff}</div>
-                        <div style={{fontSize:10,color:T.textSub}}>vs semana pasada</div>
-                      </div>
-                    </div>
+                      );
+                    })()}
                     {/* Insight */}
                     <div style={{background:T.bg,borderRadius:12,padding:"12px 14px",borderLeft:`3px solid ${T.violet}`,fontSize:13,color:T.textMid,lineHeight:1.6,fontStyle:"italic"}}>{insight}</div>
                   </div>
@@ -1321,6 +1332,37 @@ export default function App(){
                         </div>
                       );
                     })}
+                    {/* RPE - Esfuerzo percibido */}
+                    {(()=>{
+                      const rpeVal=s.rpe||0;
+                      const rpeLabels=["","Muy fácil","Fácil","Moderado","Algo duro","Duro","Muy duro","Intenso","Máximo esfuerzo","Al límite","Fallo total"];
+                      const rpeColors=["",T.sage,T.sage,T.sage,T.sageD,T.sand,T.sand,T.clay,T.clay,"#D44","#C22"];
+                      const rpeEmojis=["","😌","🙂","💪","😤","🔥","🔥","💀","💀","⚠️","☠️"];
+                      return(
+                        <div style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                            <div>
+                              <div style={{fontSize:11,color:T.violet,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>ESFUERZO PERCIBIDO</div>
+                              <div style={{fontSize:13,color:T.textSub}}>¿Qué tan dura fue esta sesión?</div>
+                            </div>
+                            {rpeVal>0&&<div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <span style={{fontSize:20}}>{rpeEmojis[rpeVal]}</span>
+                              <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:700,color:rpeColors[rpeVal]}}>{rpeVal}</div>
+                            </div>}
+                          </div>
+                          {rpeVal>0&&<div style={{fontSize:13,fontWeight:600,color:rpeColors[rpeVal],marginBottom:10,textAlign:"center"}}>{rpeLabels[rpeVal]}</div>}
+                          {/* Slider */}
+                          <div style={{position:"relative",padding:"8px 0"}}>
+                            <input type="range" min="1" max="10" step="1" value={rpeVal||5} onChange={async(e)=>{const v=parseInt(e.target.value);const{error}=await supabase.from("sesiones").update({rpe:v}).eq("id",s.id);if(!error)setSesiones(p=>p.map(x=>x.id===s.id?{...x,rpe:v}:x));}} style={{width:"100%",height:6,borderRadius:99,appearance:"none",WebkitAppearance:"none",background:`linear-gradient(90deg, ${T.sage} 0%, ${T.sand} 50%, ${T.clay} 100%)`,outline:"none",cursor:"pointer"}}/>
+                            <style>{`input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:99px;background:${T.surface};border:3px solid ${rpeColors[rpeVal]||T.violet};box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer;transition:border-color .2s}input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:99px;background:${T.surface};border:3px solid ${rpeColors[rpeVal]||T.violet};box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer}`}</style>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.textSub,marginTop:2}}>
+                            <span>Mínimo</span>
+                            <span>Máximo</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {/* Finalizar sesión */}
                     <button onClick={()=>finalizarSesion(sesionAbierta)} style={{padding:"16px",borderRadius:99,background:s.completada?T.muted:seriesHechas===totalSeries&&totalSeries>0?T.sage:T.violet,border:"none",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:4,transition:"background .4s"}}>
                       {s.completada?"✓ Sesión completada":seriesHechas===totalSeries&&totalSeries>0?"✓ ¡Todas las series! Finalizar":"Finalizar sesión →"}
@@ -1385,6 +1427,7 @@ export default function App(){
                                 <div style={{fontSize:12,color:s.completada?T.muted:T.violet,marginTop:1,fontWeight:500}}>{(s.grupo||"").replace(/^Sem \d+ · /,"")}</div>
                                 <div style={{fontSize:11,color:T.textSub,marginTop:2}}>
                                   {ejercicios.length>0?`${ejercicios.length} ejercicios${totalSer>0?` · ${hechas}/${totalSer} series`:""}`:s.descripcion?"Ver ejercicios":"Sin detalle — regenerar"}
+                                  {s.rpe>0&&<span style={{color:s.rpe>=7?T.clay:s.rpe>=4?T.sand:T.sage,fontWeight:600}}> · RPE {s.rpe}/10</span>}
                                 </div>
                               </div>
                               <button onClick={()=>abrirSesion(s.id)} style={{padding:"9px 16px",borderRadius:99,background:s.completada?T.border:T.violet,border:"none",color:s.completada?T.textMid:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0,transition:"all .2s"}}>
