@@ -174,7 +174,7 @@ export default function App(){
   const[dark,setDark]=useState(false);
   const[user,setUser]=useState(null);const[profile,setProfile]=useState(null);
   const[screen,setScreen]=useState(window.location.search.includes("dev")?"app":"loading");
-  const[showLanding,setShowLanding]=useState(!window.location.search.includes("dev")&&!window.location.search.includes("start"));
+  const[showLanding,setShowLanding]=useState(!window.location.search.includes("dev")&&!window.location.search.includes("start")&&!window.location.hash.includes("access_token")&&!window.location.hash.includes("refresh_token"));
   const[tab,setTab]=useState("inicio");
   const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[loading,setLoading]=useState(false);const[error,setError]=useState("");
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
