@@ -544,10 +544,10 @@ function ProRegistroForm({ T }) {
 // ─── MARKETPLACE PREVIEW ──────────────────────────────────────
 function Marketplace({ T }) {
   const pros = [
-    { initials: "CV", name: "Camila Vásquez", role: "Nutricionista Clínica", rating: 4.9, reviews: 127, tags: ["Pérdida de peso", "Deportiva"], price: "$25.000/sesión", color: T.sage },
-    { initials: "MR", name: "Martín Reyes", role: "Entrenador Personal", rating: 4.8, reviews: 94, tags: ["Fuerza", "Hipertrofia"], price: "$20.000/sesión", color: T.violet },
-    { initials: "SF", name: "Sofía Fuentes", role: "Psicóloga Deportiva", rating: 5.0, reviews: 68, tags: ["Motivación", "Hábitos"], price: "$30.000/sesión", color: T.sky },
-    { initials: "DR", name: "Diego Rojas", role: "Kinesiólogo", rating: 4.7, reviews: 53, tags: ["Rehabilitación", "Movilidad"], price: "$22.000/sesión", color: T.clay },
+    { initials: "C", name: "Camila", role: "Nutricionista Clínica", rating: 4.9, tags: ["Pérdida de peso", "Deportiva"], price: "Desde $25.000", color: T.sage },
+    { initials: "M", name: "Martín", role: "Entrenador Personal", rating: 4.8, tags: ["Fuerza", "Hipertrofia"], price: "Desde $20.000", color: T.violet },
+    { initials: "S", name: "Sofía", role: "Psicóloga Deportiva", rating: 5.0, tags: ["Motivación", "Hábitos"], price: "Desde $30.000", color: T.sky },
+    { initials: "D", name: "Diego", role: "Kinesiólogo", rating: 4.7, tags: ["Rehabilitación", "Movilidad"], price: "Desde $22.000", color: T.clay },
   ];
 
   return (
@@ -600,7 +600,6 @@ function Marketplace({ T }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
                   <span style={{ color: T.sand, fontSize: 14 }}>★</span>
                   <span style={{ fontSize: 14, fontWeight: 600, color: T.charcoal, fontFamily: window.TRIFLOW_FONTS.body }}>{pro.rating}</span>
-                  <span style={{ fontSize: 13, color: T.textSub, fontFamily: window.TRIFLOW_FONTS.body }}>({pro.reviews} reseñas)</span>
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
@@ -616,17 +615,18 @@ function Marketplace({ T }) {
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${T.border}`, paddingTop: 16 }}>
                   <span style={{ fontSize: 15, fontWeight: 600, color: T.charcoal, fontFamily: window.TRIFLOW_FONTS.body }}>{pro.price}</span>
-                  <button style={{
+                  <a href="/?start" style={{
                     padding: "8px 18px", borderRadius: 99, background: "transparent",
                     border: `1.5px solid ${pro.color}55`, color: pro.color, fontSize: 13,
                     fontWeight: 600, cursor: "pointer", fontFamily: window.TRIFLOW_FONTS.body,
-                    transition: "all .2s ease",
+                    transition: "all .2s ease", textDecoration: "none", display: "inline-flex",
+                    alignItems: "center", gap: 6,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = pro.color + "14"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                   >
-                    Ver perfil
-                  </button>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Ver perfil
+                  </a>
                 </div>
               </div>
             </window.Reveal>
