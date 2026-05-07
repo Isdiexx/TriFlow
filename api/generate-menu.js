@@ -102,9 +102,17 @@ Despensa actual (con cantidades): ${stockTxt}
 5. Para cada item indica: nombre (con vocabulario local), cantidad numérica, unidad (g, ml, unidad, kg, l), y motivo breve.
 6. Unidades válidas: g, kg, ml, l, unidad.
 
+═══ REGLAS DE CONSUMO POR COMIDA ═══
+1. Para cada día, incluye un objeto "consumo" que detalle los ingredientes y cantidades usados en CADA comida.
+2. CRÍTICO: Si un ingrediente está en la despensa del usuario, usa EXACTAMENTE el mismo nombre y unidad que aparece en la despensa.
+3. Para ingredientes que NO están en la despensa, usa nombres descriptivos claros con unidades estándar.
+4. Estima cantidades realistas para 1 porción individual por comida.
+5. Incluye TODOS los ingredientes principales (mínimo 2, máximo 6 por comida).
+6. Las cantidades deben ser coherentes con las porciones del plato descrito.
+
 ═══ FORMATO DE RESPUESTA ═══
 Responde SOLO con JSON válido, SIN markdown, SIN texto adicional. Formato exacto:
-{"menu":[{"dia":"Lunes","desayuno":"...","almuerzo":"...","snack":"...","cena":"..."},...7 días...],"lista_compra":[{"nombre":"Pollo","cantidad":1400,"unidad":"g","motivo":"Para 4 almuerzos"},...]}
+{"menu":[{"dia":"Lunes","desayuno":"...","almuerzo":"...","snack":"...","cena":"...","consumo":{"desayuno":[{"nombre":"Pan","cantidad":100,"unidad":"g"},{"nombre":"Palta","cantidad":50,"unidad":"g"}],"almuerzo":[{"nombre":"Carne molida","cantidad":200,"unidad":"g"}],"snack":[{"nombre":"Yogurt","cantidad":200,"unidad":"ml"}],"cena":[{"nombre":"Arroz","cantidad":80,"unidad":"g"}]}},...7 días...],"lista_compra":[{"nombre":"Pollo","cantidad":1400,"unidad":"g","motivo":"Para 4 almuerzos"},...]}
 
 Incluye los 7 días en orden: Lunes, Martes, Miércoles, Jueves, Viernes, Sábado, Domingo.
 La clave "snack" en el JSON debe contener la merienda/once/algo según el país (mantén la clave "snack" pero el contenido debe usar el término local cuando aplique).`;
@@ -119,7 +127,7 @@ La clave "snack" en el JSON debe contener la merienda/once/algo según el país 
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
+        max_tokens: 5000,
         system,
         messages: [{ role: 'user', content: `Genera mi menú semanal y lista de compras para ${pais} ahora.` }]
       })

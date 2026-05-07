@@ -226,10 +226,80 @@ export default function LandingPage({ onNavigateToApp }) {
         </div>
       </section>
 
+      {/* Marketplace Preview */}
+      <section style={{ padding: `${SPACING.xl * 3}px ${SPACING.xl}px`, background: T.bg }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: SPACING.xl * 2 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.sm, background: T.violet + '18', color: T.violet, fontSize: '12px', fontWeight: 600, padding: `${SPACING.xs + 2}px ${SPACING.md}px`, borderRadius: BORDER_RADIUS.full, marginBottom: SPACING.lg, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.violet, display: 'inline-block' }} />
+              Próximamente
+            </div>
+            <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontFamily: "'Playfair Display', serif", fontWeight: 600, color: T.charcoal, marginBottom: SPACING.md }}>
+              Tu equipo de salud,<br />
+              <span style={{ fontStyle: 'italic', color: T.violet, fontWeight: 400 }}>en un solo lugar</span>
+            </h2>
+            <p style={{ fontSize: '16px', color: T.textMid, maxWidth: '550px', margin: '0 auto', lineHeight: 1.6 }}>
+              Conecta con nutricionistas, entrenadores y profesionales de la salud verificados. Agenda, seguimiento y planes — todo integrado con tu progreso en TriFlow.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: SPACING.lg }}>
+            {[
+              { initials: 'CV', name: 'Camila Vásquez', role: 'Nutricionista Clínica', rating: 4.9, reviews: 127, specialties: ['Pérdida de peso', 'Deportiva'], price: '$25.000/sesión', color: T.sage },
+              { initials: 'MR', name: 'Martín Reyes', role: 'Entrenador Personal', rating: 4.8, reviews: 94, specialties: ['Fuerza', 'Hipertrofia'], price: '$20.000/sesión', color: T.violet },
+              { initials: 'SF', name: 'Sofía Fuentes', role: 'Psicóloga Deportiva', rating: 5.0, reviews: 68, specialties: ['Motivación', 'Hábitos'], price: '$30.000/sesión', color: T.sky },
+              { initials: 'DR', name: 'Diego Rojas', role: 'Kinesiólogo', rating: 4.7, reviews: 53, specialties: ['Rehabilitación', 'Movilidad'], price: '$22.000/sesión', color: T.clay },
+            ].map((pro, i) => (
+              <div key={i} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: BORDER_RADIUS.lg, padding: SPACING.xl, transition: TRANSITIONS.slow, position: 'relative', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.lg }}>
+                  <div style={{ width: 52, height: 52, borderRadius: BORDER_RADIUS.full, background: pro.color + '20', border: `2px solid ${pro.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 700, color: pro.color, fontFamily: "'Space Grotesk', sans-serif", flexShrink: 0 }}>
+                    {pro.initials}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: T.charcoal }}>{pro.name}</div>
+                    <div style={{ fontSize: '13px', color: pro.color, fontWeight: 500, marginTop: 2 }}>{pro.role}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.md }}>
+                  <span style={{ color: T.sand, fontSize: '13px' }}>★</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: T.charcoal }}>{pro.rating}</span>
+                  <span style={{ fontSize: '12px', color: T.textSub }}>({pro.reviews} reseñas)</span>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACING.xs + 2, marginBottom: SPACING.lg }}>
+                  {pro.specialties.map((s, j) => (
+                    <span key={j} style={{ fontSize: '11px', padding: `${SPACING.xs}px ${SPACING.sm + 2}px`, background: pro.color + '12', color: pro.color, borderRadius: BORDER_RADIUS.full, fontWeight: 500 }}>
+                      {s}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${T.border}`, paddingTop: SPACING.md }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: T.charcoal }}>{pro.price}</span>
+                  <button style={{ padding: `${SPACING.sm}px ${SPACING.lg}px`, borderRadius: BORDER_RADIUS.full, background: 'transparent', border: `1.5px solid ${pro.color}50`, color: pro.color, fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: TRANSITIONS.fast }}>
+                    Ver perfil
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: SPACING.xl * 1.5 }}>
+            <p style={{ fontSize: '14px', color: T.textSub, marginBottom: SPACING.md }}>
+              ¿Eres profesional de la salud?
+            </p>
+            <button style={{ padding: `${SPACING.md}px ${SPACING.xl}px`, borderRadius: BORDER_RADIUS.full, background: 'transparent', border: `1.5px solid ${T.border}`, color: T.charcoal, fontSize: '14px', fontWeight: 500, cursor: 'pointer', transition: TRANSITIONS.fast }}>
+              Únete como profesional →
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Final */}
-      <section style={{ padding: `${SPACING.xl * 3}px ${SPACING.xl}px`, textAlign: 'center', background: T.bg }}>
+      <section style={{ padding: `${SPACING.xl * 3}px ${SPACING.xl}px`, textAlign: 'center', background: T.surface }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '48px', fontFamily: "'Playfair Display', serif", fontWeight: 600, marginBottom: SPACING.xl, color: T.charcoal }}>
+          <h2 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontFamily: "'Playfair Display', serif", fontWeight: 600, marginBottom: SPACING.xl, color: T.charcoal }}>
             ¿Listo para cambiar?
           </h2>
           <p style={{ fontSize: '18px', color: T.textMid, marginBottom: SPACING.xl * 2 }}>

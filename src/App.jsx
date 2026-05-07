@@ -377,7 +377,7 @@ export default function App(){
     const{error}=await supabase.from("sesiones").update({completada:true,logs}).eq("id",sesionId);
     if(!error){setSesiones(p=>p.map(s=>s.id===sesionId?{...s,completada:true,logs}:s));setSesionAbierta(null);}
   };
-  const generarMenu=async()=>{if(menuLoading)return false;setMenuLoading(true);setMenuError("");let _ok=false;try{const res=await fetch("/api/generate-menu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile,stock})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.menu)||!data.menu.length)throw new Error("Menú vacío");await supabase.from("menu_semanal").delete().eq("user_id",user.id);const rows=data.menu.map(m=>({user_id:user.id,dia:m.dia,desayuno:m.desayuno||"",almuerzo:m.almuerzo||"",snack:m.snack||"",cena:m.cena||""}));const{data:inserted,error}=await supabase.from("menu_semanal").insert(rows).select();if(error)throw error;setMenu(inserted||rows);setListaCompra(Array.isArray(data.lista_compra)?data.lista_compra:[]);_ok=true;}catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}setMenuLoading(false);return _ok;};
+  const generarMenu=async()=>{if(menuLoading)return false;setMenuLoading(true);setMenuError("");let _ok=false;try{const res=await fetch("/api/generate-menu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile,stock})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.menu)||!data.menu.length)throw new Error("Menú vacío");await supabase.from("menu_semanal").delete().eq("user_id",user.id);const rows=data.menu.map(m=>({user_id:user.id,dia:m.dia,desayuno:m.desayuno||"",almuerzo:m.almuerzo||"",snack:m.snack||"",cena:m.cena||"",consumo:m.consumo||{}}));const{data:inserted,error}=await supabase.from("menu_semanal").insert(rows).select();if(error)throw error;setMenu(inserted||rows);setListaCompra(Array.isArray(data.lista_compra)?data.lista_compra:[]);_ok=true;}catch(e){console.error("generarMenu error:",e);setMenuError(e.message||"Error generando menú");}setMenuLoading(false);return _ok;};
   const generarEntrenamiento=async()=>{if(entrenamientoLoading)return false;setEntrenamientoLoading(true);setEntrenamientoError("");let _ok=false;try{const res=await fetch("/api/generate-training",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);if(!Array.isArray(data.sesiones)||!data.sesiones.length)throw new Error("Sin sesiones generadas");await supabase.from("sesiones").delete().eq("user_id",user.id);const rows=data.sesiones.map(s=>({user_id:user.id,dia:s.dia,grupo:`Sem ${s.semana||1} · ${s.grupo}`,descripcion:s.descripcion||"",completada:false,logs:{}}));const{data:inserted,error}=await supabase.from("sesiones").insert(rows).select();if(error)throw error;setSesiones(inserted||rows);_ok=true;}catch(e){console.error("generarEntrenamiento error:",e);setEntrenamientoError(e.message||"Error generando plan");}setEntrenamientoLoading(false);return _ok;};
   const ejecutarAccionAsistente=async(tipo,datos)=>{
     setAccionSugerida(null);
@@ -400,8 +400,9 @@ export default function App(){
   const toggleComidaCompleta=async(fecha,comida)=>{
     try{
       const existing=menuTracking.find(t=>t.fecha===fecha&&t.comida===comida);
+      const wasComplete=existing?.completada||false;
+      const newVal=!wasComplete;
       if(existing){
-        const newVal=!existing.completada;
         const{error}=await supabase.from("menu_diario").update({completada:newVal}).eq("id",existing.id);
         if(error)throw error;
         setMenuTracking(p=>p.map(t=>t.id===existing.id?{...t,completada:newVal}:t));
@@ -409,6 +410,38 @@ export default function App(){
         const{data,error}=await supabase.from("menu_diario").insert({user_id:user.id,fecha,comida,completada:true,comentario:""}).select().single();
         if(error)throw error;
         if(data)setMenuTracking(p=>[...p,data]);
+      }
+      // Auto-descuento de despensa según consumo del menú
+      const fechaObj=new Date(fecha+'T12:00:00');
+      const diaSemIdx=fechaObj.getDay()===0?6:fechaObj.getDay()-1;
+      const menuDia=menu.find(m=>m.dia===DIAS[diaSemIdx]);
+      const items=menuDia?.consumo?.[comida];
+      if(Array.isArray(items)&&items.length>0){
+        const norm=s=>(s||'').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+        const aBase=(c,u)=>{const ul=(u||'').toLowerCase();if(ul==='kg')return[c*1000,'g'];if(ul==='l')return[c*1000,'ml'];return[c,ul];};
+        const updates=[];
+        for(const item of items){
+          const ni=norm(item.nombre);
+          const si=stock.find(s=>norm(s.nombre)===ni)||stock.find(s=>norm(s.nombre).includes(ni)||ni.includes(norm(s.nombre)));
+          if(!si)continue;
+          const[cantI,uI]=aBase(item.cantidad||0,item.unidad);
+          const[cantS,uS]=aBase(si.cantidad,si.unidad);
+          const esUnidad=si.unidad==='unidad'||si.unidad==='un';
+          if(uI!==uS&&!esUnidad)continue;
+          let newCant;
+          if(esUnidad){
+            newCant=newVal?Math.max(0,si.cantidad-(item.cantidad||0)):si.cantidad+(item.cantidad||0);
+          }else{
+            const newBase=newVal?Math.max(0,cantS-cantI):cantS+cantI;
+            newCant=si.unidad==='kg'?newBase/1000:si.unidad==='l'?newBase/1000:newBase;
+          }
+          newCant=Math.round(newCant*100)/100;
+          updates.push({id:si.id,cantidad:newCant});
+        }
+        if(updates.length>0){
+          for(const u of updates)await supabase.from("stock").update({cantidad:u.cantidad}).eq("id",u.id);
+          setStock(p=>p.map(s=>{const u=updates.find(up=>up.id===s.id);return u?{...s,cantidad:u.cantidad}:s;}));
+        }
       }
     }catch(e){console.error("toggleComidaCompleta error:",e);}
   };
