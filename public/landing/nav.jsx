@@ -13,6 +13,7 @@ function Nav({ T, onTweaks }) {
   const links = [
     { l: "Cómo funciona", h: "#how" },
     { l: "Asistente IA", h: "#ai" },
+    { l: "Profesionales", h: "#marketplace" },
     { l: "Precios", h: "#pricing" },
     { l: "FAQ", h: "#faq" },
   ];
