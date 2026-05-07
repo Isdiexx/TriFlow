@@ -190,7 +190,7 @@ export default function App(){
   const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile",dias_entrenamiento:3});
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
   const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");const[showPesoDetalle,setShowPesoDetalle]=useState(false);const[pesoRango,setPesoRango]=useState("all");
-  const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);
+  const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);const[reponerItem,setReponerItem]=useState(null);const[reponerCant,setReponerCant]=useState("");
   const[diaMenu,setDiaMenu]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
   const[showScanner,setShowScanner]=useState(false);const[scannedCode,setScannedCode]=useState("");const[scannedProduct,setScannedProduct]=useState(null);const[scanLoading,setScanLoading]=useState(false);
   const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);
@@ -311,6 +311,7 @@ export default function App(){
   };
   const agregarProducto=async()=>{const nombre=sanitize(nuevoProducto.nombre,100);if(!nombre)return;const cant=parseFloat(nuevoProducto.cantidad)||0;if(!isValidNumber(cant,0,99999))return;const{data}=await supabase.from("stock").insert({user_id:user.id,nombre,cantidad:cant,unidad:sanitize(nuevoProducto.unidad,10)||"g"}).select().single();if(data){setStock(p=>[...p,data]);setNuevoProducto({nombre:"",cantidad:"",unidad:"g"});setMostrarForm(false);}};
   const eliminarProducto=async(id)=>{await supabase.from("stock").delete().eq("id",id);setStock(p=>p.filter(s=>s.id!==id));};
+  const reponerStock=async(item)=>{const cant=parseFloat(reponerCant);if(!cant||cant<=0)return;const newCant=item.cantidad+cant;const{error}=await supabase.from("stock").update({cantidad:Math.round(newCant*100)/100}).eq("id",item.id);if(!error){setStock(p=>p.map(s=>s.id===item.id?{...s,cantidad:Math.round(newCant*100)/100}:s));setReponerItem(null);setReponerCant("");}};
   const toggleSesion=async(id,completada)=>{await supabase.from("sesiones").update({completada:!completada}).eq("id",id);setSesiones(p=>p.map(s=>s.id===id?{...s,completada:!completada}:s));};
   const crearHabito=async()=>{
     const nombre=sanitize(nuevoHabitoForm.nombre,80);if(!nombre)return;
@@ -471,6 +472,7 @@ export default function App(){
   const hoyIdx=new Date().getDay()===0?6:new Date().getDay()-1;
   const menuHoy=menu.find(m=>m.dia===DIAS[hoyIdx])||null;
   const stockCritico=stock.filter(s=>s.cantidad<=(s.minimo||0));
+  const listaCompraCompleta=(()=>{const norm=s=>(s||'').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();const nombres=new Set(listaCompra.map(i=>norm(i.nombre)));const fromStock=stockCritico.filter(s=>!nombres.has(norm(s.nombre))).map(s=>({nombre:s.nombre,cantidad:s.unidad==='un'||s.unidad==='unidad'?1:s.unidad==='kg'?1:s.unidad==='L'||s.unidad==='l'?1:500,unidad:s.unidad||'g',motivo:'Stock agotado',stockId:s.id}));return[...listaCompra,...fromStock];})();
   const sesPorSemana=(n)=>sesiones.filter(s=>s.grupo?.startsWith(`Sem ${n}`));
   const onboardingSlides=[{emoji:"🌱",title:"Organiza tu cambio",desc:"Perfil personalizado según tus objetivos y restricciones"},{emoji:"🥗",title:"Tu alimentación, ordenada",desc:"Menú semanal generado con IA basado en tu despensa"},{emoji:"✦",title:"Con un profesional real",desc:"Tu asistente IA entrena contigo y adapta planes"}];
 
@@ -1056,7 +1058,7 @@ export default function App(){
                   <div style={{background:dark?T.clay+"18":`linear-gradient(135deg,${T.sand}18,${T.clay}10)`,borderRadius:16,padding:"16px",border:`1px solid ${T.clay}33`,transition:"all .4s"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                       <div style={{fontSize:11,color:T.sand,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>⚠ DESPENSA</div>
-                      <button onClick={()=>setTab("despensa")} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:T.clay,fontFamily:"'DM Sans',sans-serif"}}>Ver lista →</button>
+                      <button onClick={()=>{setTab("despensa");setDespensaTab("compras");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:T.clay,fontFamily:"'DM Sans',sans-serif"}}>Ver lista →</button>
                     </div>
                     <div style={{fontSize:14,color:T.charcoal,marginBottom:8}}>Faltan <strong>{stockCritico.length} productos</strong> para tu menú.</div>
                     <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{stockCritico.slice(0,3).map(p=><Chip key={p.id} color={T.clay} T={T}>{p.nombre}</Chip>)}</div>
@@ -1170,17 +1172,24 @@ export default function App(){
                     );})}
                   </>):null;
                 })()}
-                {listaCompra.length>0&&(
+                {listaCompraCompleta.length>0&&(
                   <div style={{background:T.sand+"14",border:`1px solid ${T.sand}44`,borderRadius:16,padding:"16px",marginTop:4}}>
-                    <div style={{fontSize:14,fontWeight:600,color:T.sand,marginBottom:4}}>🛒 Sugerencias para tu despensa</div>
-                    <div style={{fontSize:11,color:T.textSub,marginBottom:10}}>Productos faltantes para este menú</div>
-                    {listaCompra.map((item,i)=>(
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <div style={{fontSize:14,fontWeight:600,color:T.sand}}>🛒 Productos faltantes</div>
+                      <button onClick={()=>{setTab("despensa");setDespensaTab("compras");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:11,color:T.sage,fontFamily:"'DM Sans',sans-serif"}}>Ver todo →</button>
+                    </div>
+                    <div style={{fontSize:11,color:T.textSub,marginBottom:10}}>Para tu menú y despensa</div>
+                    {listaCompraCompleta.slice(0,4).map((item,i)=>(
                       <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:i>0?`1px solid ${T.border}`:"none",gap:10}}>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{item.nombre} <span style={{color:T.textSub,fontWeight:400}}>· {item.cantidad}{item.unidad}</span></div>
-                          {item.motivo&&<div style={{fontSize:11,color:T.textSub,marginTop:2}}>{item.motivo}</div>}
+                          <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{item.nombre} <span style={{color:T.textSub,fontWeight:400}}>· {item.cantidad} {item.unidad}</span></div>
+                          {item.motivo&&<div style={{fontSize:11,color:item.stockId?T.clay:T.textSub,marginTop:2}}>{item.motivo}</div>}
                         </div>
-                        <button onClick={()=>agregarSugerencia(item,i)} style={{padding:"6px 12px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>+ Agregar</button>
+                        {item.stockId?(
+                          <button onClick={()=>{setTab("despensa");setDespensaTab("stock");setTimeout(()=>{setReponerItem(item.stockId);setReponerCant("");},100);}} style={{padding:"6px 12px",borderRadius:99,background:T.clay,border:"none",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>↻ Reponer</button>
+                        ):(
+                          <button onClick={()=>agregarSugerencia(item,i)} style={{padding:"6px 12px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>+ Agregar</button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1221,11 +1230,19 @@ export default function App(){
                       <div style={{fontSize:14,color:T.textMid}}>Agrega tus productos para hacer seguimiento.</div>
                     </div>
                   ):stock.map(s=>(
-                    <div key={s.id} style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${s.cantidad<=(s.minimo||0)?T.clay+"33":T.border}`,display:"flex",alignItems:"center",gap:12,transition:"all .4s"}}>
-                      <div style={{width:9,height:9,borderRadius:99,background:s.cantidad<=(s.minimo||0)?T.clay:T.sage,flexShrink:0}}/>
-                      <div style={{flex:1}}><div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{s.nombre}</div><div style={{fontSize:11,color:T.textSub,marginTop:1}}>{s.cantidad} {s.unidad}</div></div>
-                      {s.cantidad<=(s.minimo||0)&&<Chip color={T.clay} T={T}>Reponer</Chip>}
-                      <button onClick={()=>eliminarProducto(s.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.muted,padding:0,lineHeight:1}}>×</button>
+                    <div key={s.id} style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${s.cantidad<=(s.minimo||0)?T.clay+"33":T.border}`,transition:"all .4s"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:12}}>
+                        <div style={{width:9,height:9,borderRadius:99,background:s.cantidad<=(s.minimo||0)?T.clay:T.sage,flexShrink:0}}/>
+                        <div style={{flex:1}}><div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{s.nombre}</div><div style={{fontSize:11,color:T.textSub,marginTop:1}}>{s.cantidad} {s.unidad}</div></div>
+                        {s.cantidad<=(s.minimo||0)&&<button onClick={()=>{setReponerItem(reponerItem===s.id?null:s.id);setReponerCant("");}} style={{display:"inline-flex",alignItems:"center",padding:"4px 12px",borderRadius:99,fontSize:12,fontWeight:500,background:T.clay+"22",color:T.clay,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>↻ Reponer</button>}
+                        <button onClick={()=>eliminarProducto(s.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.muted,padding:0,lineHeight:1}}>×</button>
+                      </div>
+                      {reponerItem===s.id&&(
+                        <div style={{display:"flex",gap:8,marginTop:10,paddingLeft:21}}>
+                          <input type="number" placeholder={`Cantidad (${s.unidad})`} value={reponerCant} onChange={e=>setReponerCant(e.target.value)} style={{flex:1,padding:"8px 12px",borderRadius:99,border:`1.5px solid ${T.border}`,background:T.card,fontSize:13,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif"}} autoFocus/>
+                          <button onClick={()=>reponerStock(s)} style={{padding:"8px 16px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Agregar</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1233,20 +1250,28 @@ export default function App(){
 
               {despensaTab==="compras"&&(
                 <div style={{padding:"16px"}} className="fade-in">
-                  {listaCompra.length===0?(
+                  {listaCompraCompleta.length===0?(
                     <div style={{background:T.card,borderRadius:16,padding:28,border:`1px solid ${T.border}`,textAlign:"center"}}>
                       <div style={{fontSize:32,marginBottom:12}}>🛒</div>
                       <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:6}}>Sin lista de compras</div>
                       <div style={{fontSize:14,color:T.textMid,lineHeight:1.6}}>Genera tu menú para obtener sugerencias de compra.</div>
                     </div>
                   ):(<>
-                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:4}}>{listaCompra.length} productos por comprar</div>
-                    <div style={{fontSize:14,color:T.textSub,marginBottom:14}}>Basado en tu menú semanal</div>
+                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:4}}>{listaCompraCompleta.length} productos por comprar</div>
+                    <div style={{fontSize:14,color:T.textSub,marginBottom:14}}>Basado en tu menú y despensa</div>
                     <div style={{display:"flex",flexDirection:"column",gap:9}}>
-                      {listaCompra.map((item,i)=>(
-                        <div key={i} style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${T.clay}33`,display:"flex",alignItems:"center",gap:12}}>
-                          <div style={{flex:1}}><div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{item.nombre} <span style={{color:T.textSub,fontWeight:400}}>· {item.cantidad}{item.unidad}</span></div>{item.motivo&&<div style={{fontSize:11,color:T.textSub,marginTop:2}}>{item.motivo}</div>}</div>
-                          <button onClick={()=>agregarSugerencia(item,i)} style={{padding:"7px 13px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>+ Agregar</button>
+                      {listaCompraCompleta.map((item,i)=>(
+                        <div key={i} style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${item.stockId?T.clay:T.sand}33`,display:"flex",alignItems:"center",gap:12}}>
+                          <div style={{width:9,height:9,borderRadius:99,background:item.stockId?T.clay:T.sand,flexShrink:0}}/>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{item.nombre} <span style={{color:T.textSub,fontWeight:400}}>· {item.cantidad} {item.unidad}</span></div>
+                            {item.motivo&&<div style={{fontSize:11,color:item.stockId?T.clay:T.textSub,marginTop:2}}>{item.motivo}</div>}
+                          </div>
+                          {item.stockId?(
+                            <button onClick={()=>{setTab("despensa");setDespensaTab("stock");setTimeout(()=>{setReponerItem(item.stockId);setReponerCant("");},100);}} style={{padding:"7px 13px",borderRadius:99,background:T.clay,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>↻ Reponer</button>
+                          ):(
+                            <button onClick={()=>agregarSugerencia(item,i)} style={{padding:"7px 13px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>+ Agregar</button>
+                          )}
                         </div>
                       ))}
                     </div>
