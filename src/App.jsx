@@ -476,8 +476,7 @@ export default function App(){
 
   /* ── LANDING PAGE (Sin usuario, primera visita) ────────── */
   if(showLanding && !user) {
-    window.location.replace("/landing/");
-    return null;
+    return <LandingPage onNavigateToApp={()=>setShowLanding(false)} />;
   }
 
   /* ── LOADING ──────────────────────────────────────────── */
