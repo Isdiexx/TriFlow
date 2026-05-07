@@ -419,6 +419,122 @@ function FAQ({ T }) {
 }
 window.FAQ = FAQ;
 
+// ─── MARKETPLACE PREVIEW ──────────────────────────────────────
+function Marketplace({ T }) {
+  const pros = [
+    { initials: "CV", name: "Camila Vásquez", role: "Nutricionista Clínica", rating: 4.9, reviews: 127, tags: ["Pérdida de peso", "Deportiva"], price: "$25.000/sesión", color: T.sage },
+    { initials: "MR", name: "Martín Reyes", role: "Entrenador Personal", rating: 4.8, reviews: 94, tags: ["Fuerza", "Hipertrofia"], price: "$20.000/sesión", color: T.violet },
+    { initials: "SF", name: "Sofía Fuentes", role: "Psicóloga Deportiva", rating: 5.0, reviews: 68, tags: ["Motivación", "Hábitos"], price: "$30.000/sesión", color: T.sky },
+    { initials: "DR", name: "Diego Rojas", role: "Kinesiólogo", rating: 4.7, reviews: 53, tags: ["Rehabilitación", "Movilidad"], price: "$22.000/sesión", color: T.clay },
+  ];
+
+  return (
+    <section data-screen-label="09b Marketplace" style={{ padding: "120px 5vw", background: T.surface }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 64 }}>
+          <window.Reveal>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", border: `1px solid ${T.violet}44`, borderRadius: 99, fontFamily: window.TRIFLOW_FONTS.body, fontSize: 12, color: T.violet, marginBottom: 24, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.violet, display: "inline-block", animation: "tfPulse 2s ease infinite" }} />
+              Próximamente
+            </div>
+          </window.Reveal>
+          <window.Reveal delay={80}>
+            <h2 style={{ fontFamily: window.TRIFLOW_FONTS.display, fontSize: "clamp(36px, 5vw, 64px)", fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.02em", margin: 0, marginBottom: 20, textWrap: "balance" }}>
+              Tu equipo de salud,{" "}
+              <span style={{ fontFamily: window.TRIFLOW_FONTS.serif, fontStyle: "italic", color: T.violet, fontWeight: 400 }}>en un solo lugar</span>
+            </h2>
+          </window.Reveal>
+          <window.Reveal delay={140}>
+            <p style={{ fontFamily: window.TRIFLOW_FONTS.body, fontSize: 18, lineHeight: 1.6, color: T.textMid, maxWidth: 580, margin: "0 auto", textWrap: "pretty" }}>
+              Conecta con nutricionistas, entrenadores y profesionales de la salud verificados. Agenda, seguimiento y planes — todo integrado con tu progreso en TriFlow.
+            </p>
+          </window.Reveal>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }} className="pricing-grid">
+          {pros.map((pro, i) => (
+            <window.Reveal key={i} delay={i * 80}>
+              <div style={{
+                background: T.card, border: `1px solid ${T.border}`, borderRadius: 20,
+                padding: "28px 24px", transition: "all .35s ease", position: "relative", overflow: "hidden",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = pro.color + "66"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `0 12px 40px ${pro.color}18`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: 99, background: pro.color + "18",
+                    border: `2px solid ${pro.color}40`, display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, fontWeight: 700, color: pro.color, fontFamily: window.TRIFLOW_FONTS.display, flexShrink: 0,
+                  }}>
+                    {pro.initials}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: T.charcoal, fontFamily: window.TRIFLOW_FONTS.body }}>{pro.name}</div>
+                    <div style={{ fontSize: 13, color: pro.color, fontWeight: 500, marginTop: 2, fontFamily: window.TRIFLOW_FONTS.body }}>{pro.role}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+                  <span style={{ color: T.sand, fontSize: 14 }}>★</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: T.charcoal, fontFamily: window.TRIFLOW_FONTS.body }}>{pro.rating}</span>
+                  <span style={{ fontSize: 13, color: T.textSub, fontFamily: window.TRIFLOW_FONTS.body }}>({pro.reviews} reseñas)</span>
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+                  {pro.tags.map((tag, j) => (
+                    <span key={j} style={{
+                      fontSize: 11, padding: "4px 10px", background: pro.color + "14", color: pro.color,
+                      borderRadius: 99, fontWeight: 500, fontFamily: window.TRIFLOW_FONTS.body,
+                    }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${T.border}`, paddingTop: 16 }}>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: T.charcoal, fontFamily: window.TRIFLOW_FONTS.body }}>{pro.price}</span>
+                  <button style={{
+                    padding: "8px 18px", borderRadius: 99, background: "transparent",
+                    border: `1.5px solid ${pro.color}55`, color: pro.color, fontSize: 13,
+                    fontWeight: 600, cursor: "pointer", fontFamily: window.TRIFLOW_FONTS.body,
+                    transition: "all .2s ease",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = pro.color + "14"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    Ver perfil
+                  </button>
+                </div>
+              </div>
+            </window.Reveal>
+          ))}
+        </div>
+
+        <window.Reveal delay={400}>
+          <div style={{ textAlign: "center", marginTop: 48 }}>
+            <p style={{ fontSize: 15, color: T.textSub, marginBottom: 16, fontFamily: window.TRIFLOW_FONTS.body }}>
+              ¿Eres profesional de la salud?
+            </p>
+            <a href="/?start" style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              padding: "14px 28px", borderRadius: 99, border: `1.5px solid ${T.border}`,
+              color: T.charcoal, fontSize: 15, fontWeight: 500, textDecoration: "none",
+              fontFamily: window.TRIFLOW_FONTS.body, transition: "all .2s ease",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = T.violet; e.currentTarget.style.color = T.violet; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.charcoal; }}
+            >
+              Únete como profesional <window.Icon name="arrowDiag" size={14} />
+            </a>
+          </div>
+        </window.Reveal>
+      </div>
+    </section>
+  );
+}
+window.Marketplace = Marketplace;
+
 // ─── FINAL CTA ────────────────────────────────────────────────
 function FinalCTA({ T }) {
   return (
