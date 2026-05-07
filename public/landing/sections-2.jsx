@@ -544,10 +544,10 @@ function ProRegistroForm({ T }) {
 // ─── MARKETPLACE PREVIEW ──────────────────────────────────────
 function Marketplace({ T }) {
   const pros = [
-    { initials: "C", name: "Camila", role: "Nutricionista Clínica", rating: 4.9, tags: ["Pérdida de peso", "Deportiva"], price: "Desde $25.000", color: T.sage },
-    { initials: "M", name: "Martín", role: "Entrenador Personal", rating: 4.8, tags: ["Fuerza", "Hipertrofia"], price: "Desde $20.000", color: T.violet },
-    { initials: "S", name: "Sofía", role: "Psicóloga Deportiva", rating: 5.0, tags: ["Motivación", "Hábitos"], price: "Desde $30.000", color: T.sky },
-    { initials: "D", name: "Diego", role: "Kinesiólogo", rating: 4.7, tags: ["Rehabilitación", "Movilidad"], price: "Desde $22.000", color: T.clay },
+    { initials: "C", name: "Camila", role: "Nutricionista Clínica", rating: 4.9, reviews: 127, tags: ["Pérdida de peso", "Deportiva"], price: "Desde $25.000", color: T.sage },
+    { initials: "M", name: "Martín", role: "Entrenador Personal", rating: 4.8, reviews: 94, tags: ["Fuerza", "Hipertrofia"], price: "Desde $20.000", color: T.violet },
+    { initials: "S", name: "Sofía", role: "Psicóloga Deportiva", rating: 5.0, reviews: 68, tags: ["Motivación", "Hábitos"], price: "Desde $30.000", color: T.sky },
+    { initials: "D", name: "Diego", role: "Kinesiólogo", rating: 4.7, reviews: 53, tags: ["Rehabilitación", "Movilidad"], price: "Desde $22.000", color: T.clay },
   ];
 
   return (
@@ -600,6 +600,7 @@ function Marketplace({ T }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
                   <span style={{ color: T.sand, fontSize: 14 }}>★</span>
                   <span style={{ fontSize: 14, fontWeight: 600, color: T.charcoal, fontFamily: window.TRIFLOW_FONTS.body }}>{pro.rating}</span>
+                  <span style={{ fontSize: 13, color: T.textSub, fontFamily: window.TRIFLOW_FONTS.body }}>({pro.reviews})</span>
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
