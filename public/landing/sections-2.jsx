@@ -419,6 +419,128 @@ function FAQ({ T }) {
 }
 window.FAQ = FAQ;
 
+// ─── PRE-REGISTRO PROFESIONALES ──────────────────────────────
+function ProRegistroForm({ T }) {
+  const [form, setForm] = useStateT({ nombre: "", email: "", especialidad: "" });
+  const [status, setStatus] = useStateT("idle"); // idle | loading | success | error
+  const [errorMsg, setErrorMsg] = useStateT("");
+
+  const especialidades = [
+    "Nutricionista",
+    "Entrenador Personal",
+    "Psicólogo/a Deportivo/a",
+    "Kinesiólogo/a",
+    "Médico Deportólogo",
+    "Preparador Físico",
+    "Otro",
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.nombre.trim() || !form.email.trim() || !form.especialidad) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setErrorMsg("Ingresa un email válido");
+      setStatus("error");
+      return;
+    }
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const response = await fetch("/api/pro-registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: form.nombre.trim(),
+          email: form.email.trim().toLowerCase(),
+          especialidad: form.especialidad,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setErrorMsg(data?.error || "Error al enviar. Intenta de nuevo.");
+        setStatus("error");
+        return;
+      }
+      setStatus("success");
+    } catch (err) {
+      console.error("Pre-registro error:", err);
+      setErrorMsg("Error de conexión. Intenta de nuevo.");
+      setStatus("error");
+    }
+  };
+
+  if (status === "success") {
+    return (
+      <div style={{ padding: "20px 0", textAlign: "center" }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
+        <div style={{ fontFamily: window.TRIFLOW_FONTS.display, fontSize: 18, fontWeight: 600, color: T.sage, marginBottom: 8 }}>
+          ¡Pre-registro exitoso!
+        </div>
+        <p style={{ fontFamily: window.TRIFLOW_FONTS.body, fontSize: 14, color: T.textMid, lineHeight: 1.5 }}>
+          Te avisaremos cuando la plataforma de profesionales esté lista. Gracias por tu interés, {form.nombre.split(" ")[0]}.
+        </p>
+      </div>
+    );
+  }
+
+  const inputStyle = {
+    width: "100%", padding: "12px 16px", borderRadius: 12,
+    border: `1.5px solid ${T.border}`, background: T.surface,
+    fontSize: 14, color: T.charcoal, outline: "none",
+    fontFamily: window.TRIFLOW_FONTS.body, transition: "border-color .2s",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <input
+        type="text" placeholder="Tu nombre completo"
+        value={form.nombre}
+        onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+        style={inputStyle}
+        onFocus={e => e.target.style.borderColor = T.violet}
+        onBlur={e => e.target.style.borderColor = T.border}
+        required
+      />
+      <input
+        type="email" placeholder="tu@email.com"
+        value={form.email}
+        onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+        style={inputStyle}
+        onFocus={e => e.target.style.borderColor = T.violet}
+        onBlur={e => e.target.style.borderColor = T.border}
+        required
+      />
+      <select
+        value={form.especialidad}
+        onChange={e => setForm(f => ({ ...f, especialidad: e.target.value }))}
+        style={{ ...inputStyle, cursor: "pointer", color: form.especialidad ? T.charcoal : T.textSub }}
+        required
+      >
+        <option value="" disabled>Selecciona tu especialidad</option>
+        {especialidades.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+      </select>
+
+      {status === "error" && errorMsg && (
+        <div style={{ fontSize: 13, color: T.clay, fontFamily: window.TRIFLOW_FONTS.body, padding: "4px 0" }}>
+          {errorMsg}
+        </div>
+      )}
+
+      <button type="submit" disabled={status === "loading"} style={{
+        padding: "14px 24px", borderRadius: 99,
+        background: status === "loading" ? T.muted : T.violet,
+        border: "none", color: "#fff", fontSize: 15, fontWeight: 600,
+        cursor: status === "loading" ? "default" : "pointer",
+        fontFamily: window.TRIFLOW_FONTS.body, transition: "all .2s",
+        marginTop: 4,
+      }}>
+        {status === "loading" ? "Enviando..." : "Pre-registrarme →"}
+      </button>
+    </form>
+  );
+}
+
 // ─── MARKETPLACE PREVIEW ──────────────────────────────────────
 function Marketplace({ T }) {
   const pros = [
@@ -512,21 +634,19 @@ function Marketplace({ T }) {
         </div>
 
         <window.Reveal delay={400}>
-          <div style={{ textAlign: "center", marginTop: 48 }}>
-            <p style={{ fontSize: 15, color: T.textSub, marginBottom: 16, fontFamily: window.TRIFLOW_FONTS.body }}>
+          <div style={{
+            maxWidth: 520, margin: "48px auto 0", background: T.card,
+            border: `1px solid ${T.border}`, borderRadius: 24, padding: "36px 32px",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🩺</div>
+            <h3 style={{ fontFamily: window.TRIFLOW_FONTS.display, fontSize: 22, fontWeight: 600, color: T.charcoal, marginBottom: 8 }}>
               ¿Eres profesional de la salud?
+            </h3>
+            <p style={{ fontFamily: window.TRIFLOW_FONTS.body, fontSize: 14, color: T.textMid, marginBottom: 24, lineHeight: 1.5 }}>
+              Pre-regístrate para ser de los primeros en ofrecer tus servicios en TriFlow. Te avisaremos cuando lancemos.
             </p>
-            <a href="/?start" style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              padding: "14px 28px", borderRadius: 99, border: `1.5px solid ${T.border}`,
-              color: T.charcoal, fontSize: 15, fontWeight: 500, textDecoration: "none",
-              fontFamily: window.TRIFLOW_FONTS.body, transition: "all .2s ease",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = T.violet; e.currentTarget.style.color = T.violet; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.charcoal; }}
-            >
-              Únete como profesional <window.Icon name="arrowDiag" size={14} />
-            </a>
+            <ProRegistroForm T={T} />
           </div>
         </window.Reveal>
       </div>

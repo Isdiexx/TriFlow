@@ -146,6 +146,73 @@ AI generation:
 - Vercel Pro: $20/mo
 - **Total: ~$115/month**
 
+## Roadmap
+
+### Phase 1 — MVP (Completada)
+- Onboarding con perfil personalizado
+- Hábitos diarios con tracking semanal
+- Despensa (stock) con alertas de mínimo
+- Menú semanal generado por IA (Claude Haiku 4.5)
+- Plan de entrenamiento (mesociclo 4 semanas)
+- Registro de peso con historial
+- Asistente IA conversacional
+- Tracking de agua diaria
+
+### Phase 2 — Beta con usuarios reales (Actual)
+- RLS policies en todas las tablas
+- Sentry error monitoring
+- Rate limiting + input sanitization
+- Auto-descuento de despensa al completar comidas
+- Lista de compras inteligente
+- Escáner de código de barras (Open Food Facts)
+- Landing page profesional con marketplace preview
+- Dark mode persistente
+- Documentación técnica (ARCHITECTURE.md)
+
+### Phase 3 — Plataforma de Profesionales
+**Objetivo**: Conectar usuarios con profesionales de salud verificados.
+
+#### 3.1 Pre-registro (actual)
+- Formulario de interés en landing ("Únete como profesional")
+- Tabla `profesionales_preregistro` para validar demanda
+- Meta: 50+ pre-registros antes de construir
+
+#### 3.2 Portal del Profesional
+- Dashboard propio: pacientes activos, sesiones del día, ingresos
+- Perfil público: foto, bio, especialidades, certificaciones, precios, horarios
+- Gestión de pacientes: ver progreso (peso, menú, entrenamiento) con permiso
+- Agenda: disponibilidad, reservas, confirmaciones
+- Chat directo con pacientes dentro de TriFlow
+- Planes personalizados: menús/rutinas custom por paciente (reemplaza IA)
+- Facturación: historial de pagos, estadísticas
+
+#### 3.3 Conexión Usuario ↔ Profesional
+- Marketplace: buscar, filtrar, ver perfiles de profesionales
+- Reserva de sesión: agendar, pagar, confirmar
+- Vinculación: usuario contrata profesional → acceso a datos autorizados
+- Sistema de permisos: usuario elige qué datos comparte
+- Rating y reseñas post-sesión
+
+#### 3.4 Backend necesario
+- Tablas: `profesionales`, `especialidades`, `disponibilidad`, `reservas`, `pagos`, `vinculos_paciente`, `resenas`
+- Auth con roles diferenciados (usuario vs profesional)
+- Pasarela de pagos (Mercado Pago / Stripe)
+- Notificaciones (email, push)
+
+#### 3.5 Estimación de costos adicionales
+- Pasarela de pagos: comisión por transacción (~3-4%)
+- Supabase Pro: necesario para volumen de datos
+- Notificaciones push: servicio externo (OneSignal free tier)
+- Verificación de profesionales: proceso manual inicial
+
+### Phase 4 — Escalamiento
+- App nativa (React Native / Expo)
+- Gamificación (logros, streaks, desafíos)
+- Comunidad entre usuarios
+- Integraciones (Apple Health, Google Fit, wearables)
+- Internacionalización (portugués, inglés)
+- Programa de referidos
+
 ## Backup & Recovery
 
 ### Automated (Supabase Pro)
