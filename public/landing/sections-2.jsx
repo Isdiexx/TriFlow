@@ -641,10 +641,10 @@ function Marketplace({ T }) {
           }}>
             <div style={{ fontSize: 28, marginBottom: 12 }}>🩺</div>
             <h3 style={{ fontFamily: window.TRIFLOW_FONTS.display, fontSize: 22, fontWeight: 600, color: T.charcoal, marginBottom: 8 }}>
-              ¿Eres profesional de la salud?
+              Sé parte de TriFlow
             </h3>
             <p style={{ fontFamily: window.TRIFLOW_FONTS.body, fontSize: 14, color: T.textMid, marginBottom: 24, lineHeight: 1.5 }}>
-              Pre-regístrate para ser de los primeros en ofrecer tus servicios en TriFlow. Te avisaremos cuando lancemos.
+              Entrenadores, nutricionistas, kinesiólogos y más — pre-regístrate para ofrecer tus servicios en TriFlow.
             </p>
             <ProRegistroForm T={T} />
           </div>
