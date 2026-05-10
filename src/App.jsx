@@ -192,7 +192,7 @@ export default function App(){
   const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");const[showPesoDetalle,setShowPesoDetalle]=useState(false);const[pesoRango,setPesoRango]=useState("all");
   const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);const[reponerItem,setReponerItem]=useState(null);const[reponerCant,setReponerCant]=useState("");
   const[diaMenu,setDiaMenu]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
-  const[showScanner,setShowScanner]=useState(false);const[scannedCode,setScannedCode]=useState("");const[scannedProduct,setScannedProduct]=useState(null);const[scanLoading,setScanLoading]=useState(false);
+  const[boletaImg,setBoletaImg]=useState(null);const[boletaProducts,setBoletaProducts]=useState([]);const[boletaLoading,setBoletaLoading]=useState(false);const[boletaError,setBoletaError]=useState("");
   const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);
   const[menuLoading,setMenuLoading]=useState(false);const[menuError,setMenuError]=useState("");
   const[entrenamientoLoading,setEntrenamientoLoading]=useState(false);const[entrenamientoError,setEntrenamientoError]=useState("");
@@ -201,7 +201,7 @@ export default function App(){
   const[habitos,setHabitos]=useState([]);const[habitosDiarios,setHabitosDiarios]=useState([]);const[showNuevoHabito,setShowNuevoHabito]=useState(false);const[nuevoHabitoForm,setNuevoHabitoForm]=useState({nombre:"",emoji:"",descripcion:""});
   const[showReporteS,setShowReporteS]=useState(false);
   const[menuTracking,setMenuTracking]=useState([]);const[comentarioAbierto,setComentarioAbierto]=useState(null);const[comentarioTemp,setComentarioTemp]=useState("");
-  const chatBottom=useRef(null);const scannerRef=useRef(null);
+  const chatBottom=useRef(null);const boletaInputRef=useRef(null);
   const T=dark?DARK:LIGHT;
   const toggleTheme=()=>setDark(d=>{const next=!d;try{localStorage.setItem("triflow_dark",next?"1":"0");}catch{}return next;});
 
@@ -256,13 +256,8 @@ export default function App(){
     return()=>{mounted=false;subscription?.unsubscribe();};
   },[]);
   useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
-  useEffect(()=>{
-    if(showScanner&&!scannedProduct){
-      try{const scanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:250,height:250},videoConstraints:{facingMode:{exact:"environment"}},showTorchButtonIfSupported:false});scannerRef.current=scanner;scanner.render((r)=>{handleScanSuccess(r);scanner.clear()},()=>{});}
-      catch(e){console.error("Scanner error:",e);}
-    }
-    return()=>{if(scannerRef.current){try{scannerRef.current.clear();}catch(e){}}};
-  },[showScanner,scannedProduct]);
+  const scanBoleta=async(file)=>{if(!file||boletaLoading)return;setBoletaLoading(true);setBoletaError("");setBoletaProducts([]);try{const reader=new FileReader();const b64=await new Promise((ok,fail)=>{reader.onload=()=>ok(reader.result.split(",")[1]);reader.onerror=fail;reader.readAsDataURL(file);});setBoletaImg(URL.createObjectURL(file));const res=await fetch("/api/scan-boleta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:b64,pais:profile?.pais||"Chile"})});const data=await res.json();if(!res.ok)throw new Error(data?.error||"Error al analizar");if(!Array.isArray(data.productos)||!data.productos.length)throw new Error("No se encontraron productos");setBoletaProducts(data.productos.map(p=>({...p,checked:true})));}catch(e){console.error("scanBoleta error:",e);setBoletaError(e.message||"Error procesando la boleta");}setBoletaLoading(false);};
+  const confirmarBoleta=async()=>{const items=boletaProducts.filter(p=>p.checked);if(!items.length)return;const norm=s=>(s||'').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();for(const item of items){const cant=parseFloat(item.cantidad)||1;const unidad=item.unidad||"un";const existente=stock.find(s=>norm(s.nombre)===norm(item.nombre));if(existente){const newCant=Math.round((existente.cantidad+cant)*100)/100;const{error}=await supabase.from("stock").update({cantidad:newCant}).eq("id",existente.id);if(!error)setStock(p=>p.map(s=>s.id===existente.id?{...s,cantidad:newCant}:s));}else{const{data}=await supabase.from("stock").insert({user_id:user.id,nombre:item.nombre,cantidad:cant,unidad}).select().single();if(data)setStock(p=>[...p,data]);}}setBoletaProducts([]);setBoletaImg(null);setDespensaTab("stock");};
 
   const loadAll=async(uid)=>{
     try{
@@ -461,9 +456,6 @@ export default function App(){
     }catch(e){console.error("guardarComentarioComida error:",e);}
     setComentarioAbierto(null);setComentarioTemp("");
   };
-  const lookupProductByBarcode=async(barcode)=>{try{const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);if(!res.ok)return null;const data=await res.json();if(!data.product)return null;return{nombre:data.product.product_name||barcode,imagen:data.product.image_front_url||null,marca:data.product.brands||"",energia:data.product.nutriments?.energy_kcal_100g||null,proteinas:data.product.nutriments?.proteins_100g||null,grasas:data.product.nutriments?.fat_100g||null,carbohidratos:data.product.nutriments?.carbohydrates_100g||null};}catch(e){console.error("Open Food Facts error:",e);return null;}};
-  const handleScanSuccess=async(decodedText)=>{setScannedCode(decodedText);setScanLoading(true);const product=await lookupProductByBarcode(decodedText);setScannedProduct(product||{nombre:decodedText,cantidad:"1",unidad:"un",imagen:null});setScanLoading(false);};
-  const confirmarProductoEscaneado=async()=>{if(!scannedProduct?.nombre)return;const payload={user_id:user.id,nombre:scannedProduct.nombre,cantidad:parseFloat(scannedProduct.cantidad)||1,unidad:scannedProduct.unidad||"un"};const{data}=await supabase.from("stock").insert(payload).select().single();if(data){setStock(p=>[...p,data]);setShowScanner(false);setScannedCode("");setScannedProduct(null);}};
   const sendChat=async()=>{if(!chatInput.trim()||chatLoading)return;if(!rateLimiter.check()){setMsgs(p=>[...p,{role:"assistant",text:"Espera un momento antes de volver a preguntar. Tienes un límite de 10 mensajes por minuto."}]);return;}const txt=sanitize(chatInput.trim(),1000);setChatInput("");setMsgs(p=>[...p,{role:"user",text:txt}]);setChatLoading(true);try{const stockInfo=stock.map(s=>`${s.nombre}: ${s.cantidad}${s.unidad}`).join(", ");const paisU=profile?.pais||"Chile";const system=`Eres el asistente personal de TriFlow para ${profile?.nombre} ${profile?.apellido}.\nPerfil: ${paisU} 🌎 · objetivo ${profile?.objetivo?.replace(/_/g," ")}, peso actual ${profile?.peso_actual}kg, meta ${profile?.peso_meta}kg, restricciones: ${profile?.restricciones?.join(", ")||"ninguna"}.\nDespensa actual: ${stockInfo||"vacía"}.\n\nIMPORTANTE: Adapta tu lenguaje, modismos y nombres de comidas al país del usuario (${paisU}). Por ejemplo:\n- Chile: papa, palta, poroto, choclo, once, marraqueta, cazuela, charquicán\n- Argentina: papa, palta, mate, milanesa, asado, merienda, facturas\n- Perú: papa, palta, ceviche, ají de gallina, lomo saltado, lonche\n- Colombia: papa, aguacate, arepa, frijoles, ajiaco, sancocho, algo\n- Venezuela: aguacate, arepa, caraota, pabellón, cachapa\n- México: jitomate, aguacate, frijol, tortilla, chilaquiles, tacos\n- España: patata, aguacate, judía, garbanzo, tortilla, paella\nUsa modismos naturales del país sin caer en estereotipo. Responde en español, cálido y conciso (máx 200 palabras).\n\nACCIONES DISPONIBLES — usa estos marcadores SOLO cuando el usuario pide EXPLÍCITAMENTE crear o guardar contenido en la app (NO si solo conversas, consultas o das consejos):\n- Si pide crear un MENÚ SEMANAL completo para 7 días: escribe exactamente [ACCION:menu] al final de tu respuesta.\n- Si pide crear un PLAN DE ENTRENAMIENTO o mesociclo: escribe exactamente [ACCION:entrenamiento] al final.\n- Si pide agregar productos específicos a su DESPENSA: escribe [ACCION:despensa]{"items":[{"nombre":"Nombre","cantidad":N,"unidad":"g"}]}[/ACCION] al final con los items exactos (unidades válidas: g, kg, ml, l, unidad).\nIMPORTANTE: NO incluyas marcadores si el usuario solo pregunta sobre nutrición, ejercicio, recetas o pide consejos en general.`;const msgHistory=msgs.slice(1).map(m=>({role:m.role,content:m.text.replace(/\*\*/g,"")}));const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,system,messages:[...msgHistory,{role:"user",content:txt}]})});const data=await res.json();if(!res.ok)throw new Error(data?.error||`Error ${res.status}`);const responseText=data?.content?.[0]?.text;if(!responseText)throw new Error("Respuesta vacía del servidor");let cleanText=responseText;let nuevoAccion=null;const simpleM=cleanText.match(/\[ACCION:(menu|entrenamiento)\]/i);if(simpleM){nuevoAccion={tipo:simpleM[1].toLowerCase(),datos:null};cleanText=cleanText.replace(/\[ACCION:(menu|entrenamiento)\]/gi,"").trim();}const despensaM=cleanText.match(/\[ACCION:despensa\]([\s\S]*?)\[\/ACCION\]/i);if(despensaM){try{const datosDespensa=JSON.parse(despensaM[1]);nuevoAccion={tipo:"despensa",datos:datosDespensa};cleanText=cleanText.replace(/\[ACCION:despensa\][\s\S]*?\[\/ACCION\]/gi,"").trim();}catch(_){}}setMsgs(p=>[...p,{role:"assistant",text:cleanText}]);if(nuevoAccion)setAccionSugerida(nuevoAccion);}catch(e){console.error("Chat error:",e);setMsgs(p=>[...p,{role:"assistant",text:`Error: ${e.message||"No se pudo obtener respuesta"}. Intenta de nuevo.`}]);}setChatLoading(false);};
 
   const inp=(x={})=>({...inputStyle(T,'default'),marginBottom:SPACING.md,...x});
@@ -1204,7 +1196,7 @@ export default function App(){
               <div style={{padding:"18px 20px 0",background:T.surface,borderBottom:`1px solid ${T.border}`,transition:"all .4s"}}>
                 <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginBottom:12}}>La Despensa</div>
                 <div style={{display:"flex"}}>
-                  {[["stock","Mi stock"],["compras","Lista compras"],["scan","Escanear"]].map(([id,label])=>(
+                  {[["stock","Mi stock"],["compras","Lista compras"],["scan","Escanear boleta"]].map(([id,label])=>(
                     <button key={id} onClick={()=>setDespensaTab(id)} style={{padding:"9px 14px",fontSize:14,fontWeight:500,borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:`2px solid ${despensaTab===id?T.sage:"transparent"}`,color:despensaTab===id?T.sage:T.textMid,background:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s",marginBottom:0}}>{label}</button>
                   ))}
                 </div>
@@ -1280,48 +1272,51 @@ export default function App(){
               )}
 
               {despensaTab==="scan"&&(
-                <div style={{padding:"36px 20px",display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:16}} className="fade-in">
-                  <div style={{width:100,height:100,borderRadius:99,background:T.sage+"18",border:`2px dashed ${T.sage}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>⬡</div>
-                  <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:19,color:T.charcoal}}>Escanea un producto</div>
-                  <div style={{fontSize:14,color:T.textMid,lineHeight:1.7,maxWidth:260}}>Apunta al código de barras para registrar el producto con sus datos nutricionales.</div>
-                  <button onClick={()=>setShowScanner(true)} style={{width:"100%",maxWidth:280,padding:"12px",borderRadius:99,border:"none",cursor:"pointer",background:T.charcoal,color:T.bg,fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500}}>Abrir cámara 📷</button>
-                </div>
-              )}
-
-              {/* Modal escáner */}
-              {showScanner&&(
-                <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}}>
-                  <div style={{background:T.surface,borderRadius:16,padding:24,width:"90%",maxWidth:400,maxHeight:"80vh",overflow:"auto",position:"relative"}}>
-                    <button onClick={()=>setShowScanner(false)} style={{position:"absolute",top:12,right:12,width:32,height:32,borderRadius:99,background:T.card,border:`1px solid ${T.border}`,cursor:"pointer",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>×</button>
-                    {!scannedProduct?(
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontSize:20,fontWeight:600,color:T.charcoal,marginBottom:14}}>Escanear Producto</div>
-                        <div id="reader" style={{marginBottom:14,borderRadius:12,overflow:"hidden",background:T.bg}}/>
-                        {scanLoading&&<div style={{fontSize:14,color:T.textSub}}>Buscando producto...</div>}
+                <div style={{padding:"16px"}} className="fade-in">
+                  {!boletaProducts.length&&!boletaLoading?(
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:16,padding:"20px 0"}}>
+                      <div style={{width:100,height:100,borderRadius:99,background:T.sage+"18",border:`2px dashed ${T.sage}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>🧾</div>
+                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:19,color:T.charcoal}}>Escanea tu boleta</div>
+                      <div style={{fontSize:14,color:T.textMid,lineHeight:1.7,maxWidth:280}}>Toma una foto de tu boleta del supermercado y la IA extraerá todos los productos automáticamente.</div>
+                      <input ref={boletaInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])scanBoleta(e.target.files[0]);}}/>
+                      <button onClick={()=>boletaInputRef.current?.click()} style={{width:"100%",maxWidth:280,padding:"12px",borderRadius:99,border:"none",cursor:"pointer",background:T.charcoal,color:T.bg,fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500}}>📸 Tomar foto de boleta</button>
+                      {boletaError&&<div style={{fontSize:13,color:T.clay,padding:"8px 14px",background:T.clay+"14",borderRadius:12}}>{boletaError}</div>}
+                    </div>
+                  ):boletaLoading?(
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:16,padding:"40px 0"}}>
+                      {boletaImg&&<img src={boletaImg} alt="Boleta" style={{width:"100%",maxWidth:200,borderRadius:12,opacity:0.7}}/>}
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:16,height:16,border:`2px solid ${T.sage}`,borderTopColor:"transparent",borderRadius:99,animation:"spin .8s linear infinite"}}/>
+                        <span style={{fontSize:14,color:T.textMid}}>Analizando boleta...</span>
                       </div>
-                    ):(
-                      <div>
-                        <div style={{fontSize:20,fontWeight:600,color:T.charcoal,marginBottom:14}}>Confirmar Producto</div>
-                        {scannedProduct.imagen&&<img src={scannedProduct.imagen} alt={scannedProduct.nombre} style={{width:"100%",borderRadius:12,marginBottom:12,maxHeight:180,objectFit:"cover"}}/>}
-                        <div style={{background:T.card,borderRadius:12,padding:12,marginBottom:12}}>
-                          <div style={{fontSize:14,fontWeight:600,color:T.charcoal,marginBottom:4}}>{scannedProduct.nombre}</div>
-                          {scannedProduct.marca&&<div style={{fontSize:12,color:T.textSub,marginBottom:6}}>{scannedProduct.marca}</div>}
-                          {scannedProduct.energia&&<div style={{fontSize:11,color:T.textMid,marginBottom:2}}>Energía: {scannedProduct.energia} kcal</div>}
-                          {scannedProduct.proteinas&&<div style={{fontSize:11,color:T.textMid,marginBottom:2}}>Proteínas: {scannedProduct.proteinas}g</div>}
-                          {scannedProduct.grasas&&<div style={{fontSize:11,color:T.textMid,marginBottom:2}}>Grasas: {scannedProduct.grasas}g</div>}
-                          {scannedProduct.carbohidratos&&<div style={{fontSize:11,color:T.textMid}}>Carbos: {scannedProduct.carbohidratos}g</div>}
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                          <input type="number" placeholder="Cantidad" value={scannedProduct.cantidad||1} onChange={e=>setScannedProduct({...scannedProduct,cantidad:e.target.value})} style={inp({marginBottom:0})}/>
-                          <select value={scannedProduct.unidad||"un"} onChange={e=>setScannedProduct({...scannedProduct,unidad:e.target.value})} style={{...inp({marginBottom:0}),padding:"12px",fontSize:14}}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="L">L</option><option value="un">un</option></select>
-                        </div>
-                        <div style={{display:"flex",gap:8}}>
-                          <button onClick={()=>{setScannedProduct(null);setScannedCode("");}} style={btn(T.muted,{flex:1})}>Cancelar</button>
-                          <button onClick={confirmarProductoEscaneado} style={btn(T.sage,{flex:1})}>Agregar</button>
-                        </div>
+                      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+                    </div>
+                  ):(
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:18,color:T.charcoal}}>{boletaProducts.length} productos encontrados</div>
+                        <button onClick={()=>{setBoletaProducts([]);setBoletaImg(null);setBoletaError("");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.textSub,fontFamily:"'DM Sans',sans-serif"}}>✕ Limpiar</button>
                       </div>
-                    )}
-                  </div>
+                      <div style={{fontSize:12,color:T.textSub,marginBottom:12}}>Desmarca los que no quieras agregar</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+                        {boletaProducts.map((p,i)=>(
+                          <div key={i} style={{background:T.card,borderRadius:12,padding:"12px 14px",border:`1px solid ${p.checked?T.sage+"44":T.border}`,display:"flex",alignItems:"center",gap:10,opacity:p.checked?1:0.5,transition:"all .2s",cursor:"pointer"}} onClick={()=>setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,checked:!x.checked}:x))}>
+                            <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${p.checked?T.sage:T.muted}`,background:p.checked?T.sage:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              {p.checked&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}
+                            </div>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{p.nombre}</div>
+                              <div style={{fontSize:11,color:T.textSub,marginTop:1}}>{p.cantidad} {p.unidad}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>{setBoletaProducts([]);setBoletaImg(null);}} style={btn(T.muted,{flex:1})}>Cancelar</button>
+                        <button onClick={confirmarBoleta} style={btn(T.sage,{flex:1})}>Agregar {boletaProducts.filter(p=>p.checked).length} productos</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
