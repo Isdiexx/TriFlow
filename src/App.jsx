@@ -1819,7 +1819,7 @@ export default function App(){
                 <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:8}}>Cuenta</div>
                 {[
                   {ic:"target",t:"Mis objetivos",d:(profile?.objetivo?.replace(/_/g," ")||"—")+" · "+(profile?.peso_meta||"—")+" kg",c:"sage",action:()=>setShowObjetivoModal(true)},
-                  {ic:"leaf",t:"Restricciones",d:profile?.restricciones?.length?profile.restricciones.join(", "):"Ninguna",c:"clay",action:()=>setShowRestriccionesModal(true)},
+                  {ic:"leaf",t:"Restricciones",d:profile?.restricciones?.length?profile.restricciones.map(r=>r.replace(/_/g," ")).join(", "):"Ninguna",c:"clay",action:()=>setShowRestriccionesModal(true)},
                   {ic:"dumbbell",t:"Entrenamiento",d:`${profile?.dias_entrenamiento||3} días · ${profile?.objetivo==="ganar_musculo"?"Hipertrofia":profile?.objetivo==="rendimiento"?"Rendimiento":"Fuerza"}`,c:"violet",action:()=>setShowEntrenamientoModal(true)},
                   {ic:"weight",t:"Historial de peso",d:"Ver tendencia",c:"sky",action:()=>setShowPesoPage(true)},
                 ].map(row=>(
@@ -2107,11 +2107,11 @@ export default function App(){
                 {id:"Sin azúcar",label:"Sin azúcar añadida",desc:"Evitar azúcares refinados",ic:"target",c:"clay"},
                 {id:"Halal",label:"Halal",desc:"Según normas islámicas",ic:"sparkles",c:"sage"},
               ].map(r=>{
-                const active=(profile?.restricciones||[]).includes(r.id);
+                const cur=profile?.restricciones||[];
+                const active=cur.some(x=>x===r.id||x.replace(/_/g," ").toLowerCase()===r.id.toLowerCase());
                 return(
                   <div key={r.id} onClick={async()=>{
-                    const cur=profile?.restricciones||[];
-                    const next=active?cur.filter(x=>x!==r.id):[...cur,r.id];
+                    const next=active?cur.filter(x=>x!==r.id&&x.replace(/_/g," ").toLowerCase()!==r.id.toLowerCase()):[...cur,r.id];
                     setProfile(p=>({...p,restricciones:next}));
                     await supabase.from("profiles").update({restricciones:next}).eq("id",user.id);
                   }} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 14px",borderRadius:14,border:`1.5px solid ${active?T[r.c]:T.border}`,background:active?T[r.c]+"10":T.surface,cursor:"pointer",transition:"all .2s"}}>
