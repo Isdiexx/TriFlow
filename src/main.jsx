@@ -1,7 +1,22 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { Capacitor } from '@capacitor/core'
 import App from './App.jsx'
+
+// Capacitor: configurar plugins nativos
+if (Capacitor.isNativePlatform()) {
+  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: '#1A1A1A' }).catch(() => {});
+  });
+  import('@capacitor/keyboard').then(({ Keyboard }) => {
+    Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => {});
+  });
+  import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+    SplashScreen.hide().catch(() => {});
+  });
+}
 
 // Sentry: solo en producción (triflow.cl)
 if (import.meta.env.PROD) {

@@ -30,3 +30,7 @@ logs/
 server.log
 
 .vercel
+
+# Capacitor native platforms (regenerated with `npx cap add`)
+android/
+ios/
