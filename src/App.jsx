@@ -2098,14 +2098,14 @@ export default function App(){
             <div style={{fontSize:13,color:T.textSub,marginBottom:20,lineHeight:1.6}}>Selecciona restricciones alimentarias. Se considerarán al generar tus menús.</div>
             <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
               {[
-                {id:"vegetariano",label:"Vegetariano",desc:"Sin carne ni pescado",ic:"leaf",c:"sage"},
-                {id:"vegano",label:"Vegano",desc:"Sin productos de origen animal",ic:"leaf",c:"sage"},
-                {id:"sin_gluten",label:"Sin gluten",desc:"Apto para celíacos",ic:"apple",c:"sand"},
-                {id:"sin_lactosa",label:"Sin lactosa",desc:"Sin leche ni derivados",ic:"water",c:"sky"},
-                {id:"sin_frutos_secos",label:"Sin frutos secos",desc:"Libre de alérgenos comunes",ic:"bell",c:"clay"},
-                {id:"keto",label:"Keto",desc:"Bajo en carbohidratos, alto en grasas",ic:"flame",c:"violet"},
-                {id:"sin_azucar",label:"Sin azúcar añadida",desc:"Evitar azúcares refinados",ic:"target",c:"clay"},
-                {id:"halal",label:"Halal",desc:"Según normas islámicas",ic:"sparkles",c:"sage"},
+                {id:"Vegetariano",label:"Vegetariano",desc:"Sin carne ni pescado",ic:"leaf",c:"sage"},
+                {id:"Vegano",label:"Vegano",desc:"Sin productos de origen animal",ic:"leaf",c:"sage"},
+                {id:"Sin gluten",label:"Sin gluten",desc:"Apto para celíacos",ic:"apple",c:"sand"},
+                {id:"Sin lactosa",label:"Sin lactosa",desc:"Sin leche ni derivados",ic:"water",c:"sky"},
+                {id:"Sin frutos secos",label:"Sin frutos secos",desc:"Libre de alérgenos comunes",ic:"bell",c:"clay"},
+                {id:"Keto",label:"Keto",desc:"Bajo en carbohidratos, alto en grasas",ic:"flame",c:"violet"},
+                {id:"Sin azúcar",label:"Sin azúcar añadida",desc:"Evitar azúcares refinados",ic:"target",c:"clay"},
+                {id:"Halal",label:"Halal",desc:"Según normas islámicas",ic:"sparkles",c:"sage"},
               ].map(r=>{
                 const active=(profile?.restricciones||[]).includes(r.id);
                 return(
