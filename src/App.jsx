@@ -192,7 +192,7 @@ export default function App(){
   const[modo,setModo]=useState("welcome");const[showPass,setShowPass]=useState(false);const[rememberMe,setRememberMe]=useState(false);const[onboardingSlide,setOnboardingSlide]=useState(0);
   const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile",dias_entrenamiento:3});
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
-  const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");const[showPesoDetalle,setShowPesoDetalle]=useState(false);const[pesoRango,setPesoRango]=useState("all");
+  const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");const[showPesoDetalle,setShowPesoDetalle]=useState(false);const[pesoRango,setPesoRango]=useState("all");const[showPesoPage,setShowPesoPage]=useState(false);
   const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);const[reponerItem,setReponerItem]=useState(null);const[reponerCant,setReponerCant]=useState("");
   const[diaMenu,setDiaMenu]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
   const[boletaImg,setBoletaImg]=useState(null);const[boletaProducts,setBoletaProducts]=useState([]);const[boletaLoading,setBoletaLoading]=useState(false);const[boletaError,setBoletaError]=useState("");
@@ -655,27 +655,60 @@ export default function App(){
                   </div>
                 </div>
               </div>
-              {/* Day tracker card */}
-              <div style={{margin:"0 16px 8px",background:T.card,borderRadius:18,padding:"10px 14px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
-                <div style={{display:"flex",gap:5}}>
-                  {DIAS_C.map((d,i)=>{
-                    const esHoy=i===hoyIdx;
-                    return(<div key={i} style={{flex:1,textAlign:"center"}}>
-                      <div style={{fontSize:11,color:esHoy?"#fff":T.textSub,fontWeight:esHoy?600:400,background:esHoy?T.sage:"transparent",borderRadius:99,padding:"3px 0",transition:"all .3s"}}>{d}</div>
-                    </div>);
-                  })}
-                </div>
-              </div>
+              {/* Daily rings card — matches TFInicioA design */}
+              {(()=>{
+                const hoy3=localDate();
+                const completadasHoy3=habitosDiarios.filter(h=>h.fecha===hoy3).length;
+                const totalHab3=habitos.length||8;
+                const pctHoy=totalHab3>0?Math.round((completadasHoy3/totalHab3)*100):0;
+                let racha3=0;const hoyD3=new Date();
+                for(let i=0;i<60;i++){const d=new Date(hoyD3);d.setDate(hoyD3.getDate()-i);const f=d.toLocaleDateString("en-CA");if(habitosDiarios.some(h=>h.fecha===f))racha3++;else if(i>0)break;}
+                const pa3=profile?.peso_actual||"—";
+                return(
+                  <div style={{padding:"0 22px 18px"}}>
+                    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,padding:18}}>
+                      <div style={{display:"flex",gap:18,alignItems:"center"}}>
+                        <div style={{position:"relative",width:84,height:84,flexShrink:0}}>
+                          <ProgressRing value={completadasHoy3} max={totalHab3} size={84} stroke={8} color={T.sage}/>
+                          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONTS.display,fontSize:18,fontWeight:600,color:T.charcoal}}>{pctHoy}%</div>
+                        </div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:12,color:T.textSub,fontFamily:FONTS.mono,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Día de hoy</div>
+                          <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,letterSpacing:"-0.025em",lineHeight:1.1,color:T.charcoal}}>{completadasHoy3} de {totalHab3} hábitos</div>
+                          <div style={{fontSize:13,color:T.textMid,marginTop:4}}>Te faltan {totalHab3-completadasHoy3}. Tu mejor racha: {racha3} días.</div>
+                        </div>
+                      </div>
+                      {/* 4 mini stat grid */}
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:8,marginTop:16}}>
+                        {[
+                          ["water","Agua",`${agua}/${8}`,T.sky,agua/8],
+                          ["weight","Peso",pa3+"",T.sage,0.9],
+                          ["flame","Cal","—",T.clay,0.55],
+                          ["dumbbell","Sesiones",String(sesiones.filter(s=>s.completada).length),T.violet,sesiones.length>0?sesiones.filter(s=>s.completada).length/sesiones.length:0]
+                        ].map(([ic,l,v,c,p])=>(
+                          <div key={l} style={{background:c+"14",border:`1px solid ${c}22`,borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+                            <div style={{color:c,display:"flex",justifyContent:"center",marginBottom:4}}><TFIcon name={ic} size={16} color={c}/></div>
+                            <div style={{fontFamily:FONTS.display,fontSize:15,fontWeight:600,color:T.charcoal,lineHeight:1,letterSpacing:"-0.02em"}}>{v}</div>
+                            <div style={{fontSize:10,color:T.textSub,marginTop:3}}>{l}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* ───── HÁBITOS ───── */}
               {habitos.length===0&&(
-                <div style={{padding:"16px 16px 20px",background:T.surface}}>
-                  <div style={{fontSize:11,color:T.sage,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>HÁBITOS DIARIOS</div>
-                  <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginBottom:8}}>Construye tu rutina</div>
-                  <div style={{fontSize:13,color:T.textSub,lineHeight:1.6,marginBottom:16}}>Agrega hábitos diarios que quieras mantener. TriFlow te ayudará a seguir tu progreso y mantener la consistencia.</div>
-                  <button onClick={()=>setShowNuevoHabito(true)} style={{width:"100%",padding:"14px",borderRadius:12,border:`2px dashed ${T.sage}44`,background:T.sage+"0A",color:T.sage,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
-                    <span style={{fontSize:18}}>+</span> Crear mi primer hábito
-                  </button>
+                <div style={{padding:"0 22px 18px"}}>
+                  <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:8}}>Tus hábitos</div>
+                  <div style={{background:T.card,borderRadius:18,border:`1px solid ${T.border}`,padding:"24px 20px",textAlign:"center"}}>
+                    <div style={{fontFamily:FONTS.display,fontSize:20,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginBottom:8}}>Construye tu rutina</div>
+                    <div style={{fontSize:13,color:T.textSub,lineHeight:1.6,marginBottom:16}}>Agrega hábitos diarios que quieras mantener.</div>
+                    <button onClick={()=>setShowNuevoHabito(true)} style={{width:"100%",padding:"14px",borderRadius:99,border:"none",background:T.sage,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
+                      <TFIcon name="plus" size={16} color="#fff"/> Crear mi primer hábito
+                    </button>
+                  </div>
                 </div>
               )}
               {habitos.length>0&&(()=>{
@@ -698,29 +731,34 @@ export default function App(){
                 const dayOfYear=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/(864e5));
                 const insight=insights[dayOfYear%insights.length];
                 return(
-                  <div style={{padding:"16px 16px 20px",display:"flex",flexDirection:"column",gap:14,background:T.surface}}>
-                    <div>
-                      <div style={{fontSize:11,color:T.sage,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>MARCA UN HÁBITO</div>
-                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginBottom:2}}>Siente el flow</div>
+                  <div style={{padding:"0 22px 18px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
+                      <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase"}}>Tus hábitos</div>
+                      <span onClick={()=>setShowNuevoHabito(true)} style={{fontSize:12,color:T.sage,fontWeight:500,cursor:"pointer"}}>+ Nuevo</span>
                     </div>
-                    {/* Hábitos del día */}
-                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       {habitos.map(h=>{
                         const completado=habitosDiarios.some(hd=>hd.habito_id===h.id&&hd.fecha===hoy);
-                        const hColor=h.emoji==="💧"?T.sky:h.emoji==="🏋️"?T.violet:h.emoji==="🥗"?T.sage:h.emoji==="😴"?T.sand:T.sage;
+                        const hColor=h.emoji==="💧"?T.sky:h.emoji==="🏋️"?T.violet:h.emoji==="🥗"?T.sage:h.emoji==="😴"?T.sand:h.emoji==="🔥"?T.clay:T.sage;
+                        const hIcon=h.emoji==="💧"?"water":h.emoji==="🏋️"?"dumbbell":h.emoji==="🥗"?"leaf":h.emoji==="😴"?"moon":h.emoji==="📖"?"chat":h.emoji==="🔥"?"flame":"sparkles";
+                        // Count streak for this habit
+                        let hStreak=0;const hoyD4=new Date();
+                        for(let i=0;i<60;i++){const d=new Date(hoyD4);d.setDate(hoyD4.getDate()-i);const f=d.toLocaleDateString("en-CA");if(habitosDiarios.some(hd=>hd.habito_id===h.id&&hd.fecha===f))hStreak++;else if(i>0)break;}
                         return(
-                          <button key={h.id} onClick={()=>completarHabitoDia(h.id)} style={{padding:"12px 14px",borderRadius:14,border:`1.5px solid ${completado?hColor+"44":T.border}`,background:completado?hColor+"10":"transparent",display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"all .2s",fontFamily:FONTS.body,opacity:completado?0.65:1}}>
-                            <div style={{width:28,height:28,borderRadius:8,background:completado?hColor:T.bg,border:completado?"none":`2px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>
-                              {completado&&<TFIcon name="check" size={16} color="#fff"/>}
+                          <div key={h.id} onClick={()=>completarHabitoDia(h.id)} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,padding:"12px 14px",cursor:"pointer",transition:"all .25s"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:12}}>
+                              <div style={{width:28,height:28,borderRadius:8,background:completado?hColor:"transparent",border:`2px solid ${hColor}`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0,transition:"all .2s"}}>
+                                {completado&&<TFIcon name="check" size={16} color="#fff"/>}
+                              </div>
+                              <div style={{flex:1}}>
+                                <div style={{fontSize:14,fontWeight:500,color:T.charcoal,textDecoration:completado?"line-through":"none",opacity:completado?0.65:1}}>{h.nombre}</div>
+                                {hStreak>0&&<div style={{fontSize:11,color:hColor,fontWeight:500,marginTop:2,display:"flex",alignItems:"center",gap:4}}><TFIcon name="flame" size={11} color={hColor}/> {hStreak} días</div>}
+                              </div>
+                              <div style={{color:hColor}}><TFIcon name={hIcon} size={18} color={hColor}/></div>
                             </div>
-                            <div style={{flex:1,textAlign:"left"}}>
-                              <div style={{fontSize:14,color:completado?T.textMid:T.charcoal,fontWeight:500,textDecoration:completado?"line-through":"none"}}>{h.nombre}</div>
-                            </div>
-                            <div style={{fontSize:16,flexShrink:0,opacity:0.5}}>{h.emoji||"✦"}</div>
-                          </button>
+                          </div>
                         );
                       })}
-                      <button onClick={()=>setShowNuevoHabito(true)} style={{padding:"10px 14px",borderRadius:12,border:`1.5px dashed ${T.border}`,background:"transparent",display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:T.textMid,fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>+ Nuevo hábito</button>
                     </div>
                     {/* Racha + progreso semanal compacto */}
                     {(()=>{
@@ -757,11 +795,34 @@ export default function App(){
                         </div>
                       );
                     })()}
-                    {/* Insight */}
-                    <div style={{background:T.bg,borderRadius:12,padding:"12px 14px",borderLeft:`3px solid ${T.violet}`,fontSize:13,color:T.textMid,lineHeight:1.6,fontStyle:"italic"}}>{insight}</div>
                   </div>
                 );
               })()}
+
+              {/* AI Insight card — matches TFInicioA design */}
+              <div style={{padding:"0 22px 22px"}}>
+                <div style={{background:T.violet+"10",border:`1px solid ${T.violet}33`,borderRadius:18,padding:16}}>
+                  <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                    <div style={{width:32,height:32,borderRadius:99,background:T.violet+"22",color:T.violet,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <TFIcon name="sparkles" size={18} color={T.violet}/>
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,color:T.violet,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4}}>Insight de TriFlow</div>
+                      <div style={{fontSize:14,color:T.charcoal,lineHeight:1.45}}>
+                        {(()=>{
+                          const insights2=["Llevas 3 días sin meditar. Tu sueño bajó un 12%. ¿Probamos 5 min antes de dormir?","Tu consumo de agua ha mejorado esta semana. ¡Sigue así!","Basado en tu despensa, puedo sugerirte un menú rico en proteínas para hoy.","Has completado el 80% de tus hábitos esta semana. ¡Estás en racha!","Tu progreso de peso va bien encaminado. A este ritmo, alcanzarás tu meta."];
+                          const dayOfYear2=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/(864e5));
+                          return insights2[dayOfYear2%insights2.length];
+                        })()}
+                      </div>
+                      <div style={{marginTop:10,display:"flex",gap:8}}>
+                        <button onClick={()=>setTab("asistente")} style={{padding:"8px 14px",borderRadius:99,background:T.sage+"1F",color:T.sage,border:"none",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Ver más</button>
+                        <button style={{padding:"8px 14px",borderRadius:99,background:"transparent",color:T.sage,border:"none",fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Ahora no</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
                 {/* Historial de peso */}
@@ -1087,25 +1148,44 @@ export default function App(){
           {/* ═══ EL HÁBITO ═══ */}
           {tab==="habito"&&(
             <div style={{paddingBottom:16}}>
-              <div style={{padding:"18px 20px 0",background:T.surface,borderBottom:`1px solid ${T.border}`,transition:"all .4s"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                  <div>
-                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal}}>El Hábito</div>
-                    <div style={{fontSize:14,color:T.textSub,marginTop:2}}>Tu menú semanal personalizado</div>
-                  </div>
-                  {menu.length>0&&<button onClick={generarMenu} disabled={menuLoading} style={{padding:"8px 14px",borderRadius:99,background:menuLoading?T.muted:T.sage,border:"none",color:"#fff",fontSize:11,cursor:menuLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap",marginTop:4}}>{menuLoading?"Generando...":"↻ Regenerar"}</button>}
+              {/* Header — matches TFHabito design */}
+              <div style={{padding:"8px 22px 14px",background:T.bg,flexShrink:0}}>
+                <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.12em",color:T.sage,marginBottom:6}}>
+                  Semana {Math.ceil((new Date().getDate())/7)}
                 </div>
-                {menu.length>0&&(
-                  <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:0}}>
-                    {DIAS.map((d,i)=>{
-                      const tieneMenu=menu.some(m=>m.dia===d);
-                      return(<button key={i} onClick={()=>setDiaMenu(i)} style={{padding:"7px 11px",borderRadius:99,fontSize:12,fontWeight:500,whiteSpace:"nowrap",background:diaMenu===i?T.sage:"transparent",color:diaMenu===i?"#fff":tieneMenu?T.textMid:T.muted,border:diaMenu===i?"none":`1px solid ${T.border}`,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s",marginBottom:12,flexShrink:0}}>
-                        {d.slice(0,3)}{i===hoyIdx?" ·":""}
-                      </button>);
+                <div style={{fontFamily:FONTS.display,fontSize:28,fontWeight:600,color:T.charcoal,letterSpacing:"-0.03em",lineHeight:1.05}}>Hábito</div>
+              </div>
+              {/* Week strip calendar */}
+              <div style={{padding:"0 22px 18px"}}>
+                <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,padding:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between"}}>
+                    {["L","M","X","J","V","S","D"].map((d,i)=>{
+                      const isToday=i===hoyIdx;
+                      const dayNum=(()=>{const hoy=new Date();const diff=i-hoyIdx;const dt=new Date(hoy);dt.setDate(hoy.getDate()+diff);return dt.getDate();})();
+                      const hasDone=i<=hoyIdx;// simplification
+                      return(
+                        <div key={d} onClick={()=>setDiaMenu(i)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,cursor:"pointer"}}>
+                          <span style={{fontSize:11,color:T.textSub,fontFamily:FONTS.mono}}>{d}</span>
+                          <div style={{width:32,height:32,borderRadius:10,background:i<hoyIdx&&hasDone?T.sage:i===hoyIdx?T.sage+"44":"transparent",border:`1.5px solid ${isToday?T.charcoal:i<hoyIdx?'transparent':T.border}`,color:i<hoyIdx?"#fff":T.charcoal,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,fontFamily:FONTS.display}}>{dayNum}</div>
+                          <div style={{width:4,height:4,borderRadius:99,background:i<hoyIdx?T.sage:i===hoyIdx?T.sand:T.border}}/>
+                        </div>
+                      );
                     })}
                   </div>
-                )}
+                </div>
               </div>
+              {/* Day selector pills for menu */}
+              {menu.length>0&&(
+                <div style={{padding:"0 22px 14px",display:"flex",gap:5,overflowX:"auto"}}>
+                  {DIAS.map((d,i)=>{
+                    const tieneMenu=menu.some(m=>m.dia===d);
+                    return(<button key={i} onClick={()=>setDiaMenu(i)} style={{padding:"7px 11px",borderRadius:99,fontSize:12,fontWeight:500,whiteSpace:"nowrap",background:diaMenu===i?T.sage:"transparent",color:diaMenu===i?"#fff":tieneMenu?T.textMid:T.muted,border:diaMenu===i?"none":`1px solid ${T.border}`,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s",flexShrink:0}}>
+                      {d.slice(0,3)}{i===hoyIdx?" ·":""}
+                    </button>);
+                  })}
+                  {menu.length>0&&<button onClick={generarMenu} disabled={menuLoading} style={{padding:"7px 11px",borderRadius:99,background:"transparent",border:`1px solid ${T.border}`,color:T.sage,fontSize:12,fontWeight:500,cursor:menuLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",display:"inline-flex",alignItems:"center",gap:4,whiteSpace:"nowrap",flexShrink:0}}><TFIcon name="refresh" size={12} color={T.sage}/> {menuLoading?"...":"Regenerar"}</button>}
+                </div>
+              )}
               <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:11}} className="fade-in">
                 {menuError&&<div style={{background:T.clay+"22",border:`1px solid ${T.clay}`,borderRadius:12,padding:"12px",fontSize:12,color:T.clay}}>{menuError}</div>}
                 {menu.length===0?(
@@ -1136,7 +1216,7 @@ export default function App(){
                         </div>
                       </div>
                     )}
-                    {[["🌅","DESAYUNO","desayuno"],["☀️","ALMUERZO","almuerzo"],["🍎","ONCE","snack"],["🌙","CENA","cena"]].map(([emoji,label,key])=>{
+                    {[["leaf","DESAYUNO","desayuno","sage"],["flame","ALMUERZO","almuerzo","sand"],["apple","ONCE","snack","clay"],["moon","CENA","cena","sky"]].map(([icon,label,key,c])=>{
                       if(!md[key])return null;
                       const tracking=menuTracking.find(t=>t.fecha===fechaDia&&t.comida===key);
                       const completada=tracking?.completada||false;
@@ -1144,15 +1224,20 @@ export default function App(){
                       const commentKey=`${fechaDia}-${key}`;
                       const isCommentOpen=comentarioAbierto===commentKey;
                       return(
-                      <div key={key} style={{background:completada?T.sage+"0C":T.card,borderRadius:16,padding:"16px",border:`1px solid ${completada?T.sage+"44":T.border}`,transition:"all .4s"}}>
-                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                          <div style={{display:"flex",alignItems:"center",gap:7}}>
-                            <span style={{fontSize:14}}>{emoji}</span>
-                            <span style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace"}}>{label}</span>
-                            {completada&&<span style={{fontSize:10,color:T.sage,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>✓ Comido</span>}
+                      <div key={key} style={{background:T.card,borderRadius:18,padding:14,border:`1px solid ${T.border}`,marginBottom:10,transition:"all .4s"}}>
+                        <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+                          <div style={{width:44,height:44,borderRadius:12,background:T[c]+"22",color:T[c],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                            <TFIcon name={icon} size={20} color={T[c]}/>
                           </div>
-                          <button onClick={()=>toggleComidaCompleta(fechaDia,key)} style={{width:28,height:28,borderRadius:99,border:`2px solid ${completada?T.sage:T.border2}`,background:completada?T.sage:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .25s",flexShrink:0,padding:0}}>
-                            {completada&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                              <span style={{fontSize:11,color:T[c],fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>
+                              {completada&&<span style={{fontSize:10,color:T.sage,fontWeight:600}}>✓ Listo</span>}
+                            </div>
+                            <div style={{fontSize:14,fontWeight:500,color:T.charcoal,marginTop:4,lineHeight:1.3,textDecoration:completada?"line-through":"none",opacity:completada?0.6:1}}>{md[key]}</div>
+                          </div>
+                          <button onClick={()=>toggleComidaCompleta(fechaDia,key)} style={{width:24,height:24,borderRadius:6,background:completada?T.sage:"transparent",border:`1.5px solid ${completada?T.sage:T.border2}`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer",transition:"all .25s"}}>
+                            {completada&&<TFIcon name="check" size={14} color="#fff"/>}
                           </button>
                         </div>
                         <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,color:completada?T.textMid:T.charcoal,lineHeight:1.4,textDecoration:completada?"line-through":"none",opacity:completada?.7:1,transition:"all .3s"}}>{md[key]}</div>
@@ -1208,18 +1293,31 @@ export default function App(){
           {/* ═══ LA DESPENSA ═══ */}
           {tab==="despensa"&&(
             <div style={{paddingBottom:16}}>
-              <div style={{padding:"18px 20px 0",background:T.surface,borderBottom:`1px solid ${T.border}`,transition:"all .4s"}}>
-                <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal,marginBottom:12}}>La Despensa</div>
-                <div style={{display:"flex"}}>
-                  {[["stock","Mi stock"],["compras","Lista compras"],["scan","Escanear boleta"]].map(([id,label])=>(
-                    <button key={id} onClick={()=>setDespensaTab(id)} style={{padding:"9px 14px",fontSize:14,fontWeight:500,borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:`2px solid ${despensaTab===id?T.sage:"transparent"}`,color:despensaTab===id?T.sage:T.textMid,background:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s",marginBottom:0}}>{label}</button>
-                  ))}
+              {/* Header — matches TFDespensa design */}
+              <div style={{padding:"8px 22px 14px",background:T.bg,flexShrink:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+                  <div style={{fontFamily:FONTS.display,fontSize:28,fontWeight:600,color:T.charcoal,letterSpacing:"-0.03em",lineHeight:1.05}}>Despensa</div>
+                  <button onClick={()=>{setDespensaTab("scan");}} style={{width:38,height:38,borderRadius:99,background:T.sage,color:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><TFIcon name="scan" size={18} color="#fff"/></button>
                 </div>
+              </div>
+              {/* Pill sub-tabs — matches design */}
+              <div style={{padding:"0 22px 14px",display:"flex",gap:6}}>
+                {[["stock","En stock",String(stock.length)],["compras","Lista",String(listaCompraCompleta.length)],["scan","Escanear",""]].map(([id,l,c])=>{
+                  const a=despensaTab===id;
+                  return(
+                    <div key={id} onClick={()=>setDespensaTab(id)} style={{padding:"8px 14px",borderRadius:99,background:a?T.charcoal:T.surface,color:a?T.bg:T.textMid,border:`1px solid ${a?T.charcoal:T.border}`,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}>
+                      {l}{c&&<span style={{fontSize:11,opacity:0.6}}>{c}</span>}
+                    </div>
+                  );
+                })}
               </div>
 
               {despensaTab==="stock"&&(
-                <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:9}} className="fade-in">
-                  <button onClick={()=>setMostrarForm(!mostrarForm)} style={{padding:"9px 16px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:14,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",alignSelf:"flex-start"}}>+ Agregar producto</button>
+                <div style={{padding:"0 22px 22px"}} className="fade-in">
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                    <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase"}}>Productos · {stock.length}</div>
+                    <button onClick={()=>setMostrarForm(!mostrarForm)} style={{padding:"6px 14px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"inline-flex",alignItems:"center",gap:4}}><TFIcon name="plus" size={12} color="#fff"/> Agregar</button>
+                  </div>
                   {mostrarForm&&(
                     <div style={{background:T.card,borderRadius:16,padding:16,border:`1px solid ${T.border}`}}>
                       <input placeholder="Nombre del producto" value={nuevoProducto.nombre} onChange={e=>setNuevoProducto({...nuevoProducto,nombre:e.target.value})} style={inp()}/>
@@ -1231,70 +1329,114 @@ export default function App(){
                     </div>
                   )}
                   {stock.length===0?(
-                    <div style={{background:T.card,borderRadius:16,padding:24,border:`1px solid ${T.border}`,textAlign:"center"}}>
-                      <div style={{fontSize:32,marginBottom:12}}>📦</div>
-                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:6}}>Despensa vacía</div>
-                      <div style={{fontSize:14,color:T.textMid}}>Agrega tus productos para hacer seguimiento.</div>
+                    <div style={{background:T.card,borderRadius:18,padding:28,border:`1px solid ${T.border}`,textAlign:"center"}}>
+                      <TFIcon name="despensa" size={40} color={T.textSub}/>
+                      <div style={{fontFamily:FONTS.display,fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:6,marginTop:12}}>Despensa vacía</div>
+                      <div style={{fontSize:14,color:T.textMid,lineHeight:1.5}}>Agrega tus productos para hacer seguimiento.</div>
                     </div>
-                  ):stock.map(s=>(
-                    <div key={s.id} style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${s.cantidad<=(s.minimo||0)?T.clay+"33":T.border}`,transition:"all .4s"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:12}}>
-                        <div style={{width:9,height:9,borderRadius:99,background:s.cantidad<=(s.minimo||0)?T.clay:T.sage,flexShrink:0}}/>
-                        <div style={{flex:1}}><div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{s.nombre}</div><div style={{fontSize:11,color:T.textSub,marginTop:1}}>{s.cantidad} {s.unidad}</div></div>
-                        {s.cantidad<=(s.minimo||0)&&<button onClick={()=>{setReponerItem(reponerItem===s.id?null:s.id);setReponerCant("");}} style={{display:"inline-flex",alignItems:"center",padding:"4px 12px",borderRadius:99,fontSize:12,fontWeight:500,background:T.clay+"22",color:T.clay,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>↻ Reponer</button>}
-                        <button onClick={()=>eliminarProducto(s.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:T.muted,padding:0,lineHeight:1}}>×</button>
+                  ):stock.map(s=>{
+                    const lowStock=s.cantidad<=(s.minimo||0);
+                    const iconColor=lowStock?"clay":"sage";
+                    return(
+                    <div key={s.id}>
+                      <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:`1px solid ${T.border}`}}>
+                        <div style={{width:36,height:36,borderRadius:10,background:T[iconColor]+"22",color:T[iconColor],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          <TFIcon name="apple" size={18}/>
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>{s.nombre}</div>
+                          <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{s.cantidad} {s.unidad}</div>
+                        </div>
+                        {lowStock?(
+                          <button onClick={()=>{setReponerItem(reponerItem===s.id?null:s.id);setReponerCant("");}} style={{padding:"4px 10px",borderRadius:99,background:T.clay+"22",color:T.clay,fontSize:11,fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONTS.body}}>Reponer</button>
+                        ):(
+                          <div style={{padding:"4px 10px",borderRadius:99,border:`1px solid ${T.border}`,color:T.textMid,fontSize:11}}>{s.unidad}</div>
+                        )}
+                        <button onClick={()=>eliminarProducto(s.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.muted,padding:0,display:"flex"}}><TFIcon name="close" size={14}/></button>
                       </div>
                       {reponerItem===s.id&&(
-                        <div style={{display:"flex",gap:8,marginTop:10,paddingLeft:21}}>
-                          <input type="number" placeholder={`Cantidad (${s.unidad})`} value={reponerCant} onChange={e=>setReponerCant(e.target.value)} style={{flex:1,padding:"8px 12px",borderRadius:99,border:`1.5px solid ${T.border}`,background:T.card,fontSize:13,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif"}} autoFocus/>
-                          <button onClick={()=>reponerStock(s)} style={{padding:"8px 16px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Agregar</button>
+                        <div style={{display:"flex",gap:8,padding:"8px 0 4px",marginLeft:48}}>
+                          <input type="number" placeholder="Cantidad" value={reponerCant} onChange={e=>setReponerCant(e.target.value)} style={{flex:1,padding:"8px 12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:13,color:T.charcoal,outline:"none",fontFamily:FONTS.body}} autoFocus/>
+                          <button onClick={()=>reponerStock(s)} style={{padding:"8px 16px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:FONTS.body,fontWeight:500}}>Agregar</button>
                         </div>
                       )}
                     </div>
-                  ))}
+                  );})}
                 </div>
               )}
 
               {despensaTab==="compras"&&(
-                <div style={{padding:"16px"}} className="fade-in">
+                <div style={{padding:"0 22px 22px"}} className="fade-in">
                   {listaCompraCompleta.length===0?(
-                    <div style={{background:T.card,borderRadius:16,padding:28,border:`1px solid ${T.border}`,textAlign:"center"}}>
-                      <div style={{fontSize:32,marginBottom:12}}>🛒</div>
-                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:6}}>Sin lista de compras</div>
+                    <div style={{background:T.card,borderRadius:18,padding:28,border:`1px solid ${T.border}`,textAlign:"center"}}>
+                      <TFIcon name="cart" size={40} color={T.textSub}/>
+                      <div style={{fontFamily:FONTS.display,fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:6,marginTop:12}}>Sin lista de compras</div>
                       <div style={{fontSize:14,color:T.textMid,lineHeight:1.6}}>Genera tu menú para obtener sugerencias de compra.</div>
                     </div>
                   ):(<>
-                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:4}}>{listaCompraCompleta.length} productos por comprar</div>
-                    <div style={{fontSize:14,color:T.textSub,marginBottom:14}}>Basado en tu menú y despensa</div>
-                    <div style={{display:"flex",flexDirection:"column",gap:9}}>
-                      {listaCompraCompleta.map((item,i)=>(
-                        <div key={i} style={{background:T.card,borderRadius:16,padding:"16px",border:`1px solid ${item.stockId?T.clay:T.sand}33`,display:"flex",alignItems:"center",gap:12}}>
-                          <div style={{width:9,height:9,borderRadius:99,background:item.stockId?T.clay:T.sand,flexShrink:0}}/>
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{item.nombre} <span style={{color:T.textSub,fontWeight:400}}>· {item.cantidad} {item.unidad}</span></div>
-                            {item.motivo&&<div style={{fontSize:11,color:item.stockId?T.clay:T.textSub,marginTop:2}}>{item.motivo}</div>}
-                          </div>
-                          {item.stockId?(
-                            <button onClick={()=>{setTab("despensa");setDespensaTab("stock");setTimeout(()=>{setReponerItem(item.stockId);setReponerCant("");},100);}} style={{padding:"7px 13px",borderRadius:99,background:T.clay,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>↻ Reponer</button>
-                          ):(
-                            <button onClick={()=>agregarSugerencia(item,i)} style={{padding:"7px 13px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",flexShrink:0}}>+ Agregar</button>
-                          )}
+                    {/* Summary card */}
+                    <div style={{background:T.sage+"10",border:`1px solid ${T.sage}33`,borderRadius:18,padding:14,marginBottom:14}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div>
+                          <div style={{fontSize:13,color:T.textMid}}>Tu próxima compra</div>
+                          <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,color:T.charcoal,letterSpacing:"-0.02em"}}>{listaCompraCompleta.length} productos</div>
                         </div>
-                      ))}
+                      </div>
                     </div>
+                    <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:8}}>Generada para tu menú</div>
+                    {listaCompraCompleta.map((item,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 0",borderBottom:`1px solid ${T.border}`}}>
+                        <div onClick={()=>{if(!item.stockId)agregarSugerencia(item,i);}} style={{width:22,height:22,borderRadius:6,background:item.added?T.sage:"transparent",border:`1.5px solid ${item.added?T.sage:T.border2}`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
+                          {item.added&&<TFIcon name="check" size={12} color="#fff"/>}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:14,color:T.charcoal,textDecoration:item.added?"line-through":"none",opacity:item.added?.5:1}}>{item.nombre}</div>
+                          <div style={{fontSize:11,color:T.textSub,marginTop:1}}>{item.cantidad} {item.unidad}{item.motivo?` · ${item.motivo}`:""}</div>
+                        </div>
+                        {item.stockId?(
+                          <button onClick={()=>{setTab("despensa");setDespensaTab("stock");setTimeout(()=>{setReponerItem(item.stockId);setReponerCant("");},100);}} style={{padding:"4px 10px",borderRadius:99,background:T.clay+"22",color:T.clay,fontSize:11,fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONTS.body}}>Reponer</button>
+                        ):(
+                          <button onClick={()=>agregarSugerencia(item,i)} style={{padding:"4px 10px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:FONTS.body}}>+ Agregar</button>
+                        )}
+                      </div>
+                    ))}
                   </>)}
                 </div>
               )}
 
               {despensaTab==="scan"&&(
-                <div style={{padding:"16px"}} className="fade-in">
+                <div style={{padding:"0 22px 22px"}} className="fade-in">
                   {!boletaProducts.length&&!boletaLoading?(
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:16,padding:"20px 0"}}>
-                      <div style={{width:100,height:100,borderRadius:99,background:T.sage+"18",border:`2px dashed ${T.sage}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>🧾</div>
-                      <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:19,color:T.charcoal}}>Escanea tu boleta</div>
-                      <div style={{fontSize:14,color:T.textMid,lineHeight:1.7,maxWidth:280}}>Toma una foto de tu boleta del supermercado y la IA extraerá todos los productos automáticamente.</div>
+                    <div>
+                      {/* Gradient scan card — matches TFSheetAddProducto */}
                       <input ref={boletaInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])scanBoleta(e.target.files[0]);}}/>
-                      <button onClick={()=>boletaInputRef.current?.click()} style={{width:"100%",maxWidth:280,padding:"12px",borderRadius:99,border:"none",cursor:"pointer",background:T.charcoal,color:T.bg,fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500}}>📸 Tomar foto de boleta</button>
+                      <div onClick={()=>boletaInputRef.current?.click()} style={{background:`linear-gradient(135deg,${T.sage},${T.sageD})`,borderRadius:16,padding:18,color:"#fff",marginBottom:16,display:"flex",alignItems:"center",gap:14,cursor:"pointer"}}>
+                        <div style={{width:48,height:48,borderRadius:12,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          <TFIcon name="scan" size={22} color="#fff"/>
+                        </div>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:FONTS.display,fontSize:17,fontWeight:600,letterSpacing:"-0.02em"}}>Escanear boleta</div>
+                          <div style={{fontSize:12,opacity:0.85,marginTop:2}}>La IA detecta productos y cantidades.</div>
+                        </div>
+                        <TFIcon name="chevron" size={18} color="#fff"/>
+                      </div>
+                      {/* Photo + Manual options */}
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
+                        <div onClick={()=>boletaInputRef.current?.click()} style={{padding:14,borderRadius:16,border:`1.5px solid ${T.border}`,cursor:"pointer",background:T.surface}}>
+                          <div style={{width:36,height:36,borderRadius:10,background:T.bg,color:T.charcoal,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10}}>
+                            <TFIcon name="camera" size={18}/>
+                          </div>
+                          <div style={{fontSize:14,fontWeight:600,color:T.charcoal}}>Foto</div>
+                          <div style={{fontSize:11,color:T.textSub,marginTop:2}}>Reconocer</div>
+                        </div>
+                        <div onClick={()=>{setDespensaTab("stock");setMostrarForm(true);}} style={{padding:14,borderRadius:16,border:`1.5px solid ${T.border}`,cursor:"pointer",background:T.surface}}>
+                          <div style={{width:36,height:36,borderRadius:10,background:T.bg,color:T.charcoal,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10}}>
+                            <TFIcon name="edit" size={18}/>
+                          </div>
+                          <div style={{fontSize:14,fontWeight:600,color:T.charcoal}}>Manual</div>
+                          <div style={{fontSize:11,color:T.textSub,marginTop:2}}>Escribir</div>
+                        </div>
+                      </div>
                       {boletaError&&<div style={{fontSize:13,color:T.clay,padding:"8px 14px",background:T.clay+"14",borderRadius:12}}>{boletaError}</div>}
                     </div>
                   ):boletaLoading?(
@@ -1309,8 +1451,8 @@ export default function App(){
                   ):(
                     <div>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:18,color:T.charcoal}}>{boletaProducts.length} productos encontrados</div>
-                        <button onClick={()=>{setBoletaProducts([]);setBoletaImg(null);setBoletaError("");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.textSub,fontFamily:"'DM Sans',sans-serif"}}>✕ Limpiar</button>
+                        <div style={{fontFamily:FONTS.display,fontSize:18,fontWeight:600,color:T.charcoal}}>{boletaProducts.length} productos encontrados</div>
+                        <button onClick={()=>{setBoletaProducts([]);setBoletaImg(null);setBoletaError("");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.textSub,fontFamily:FONTS.body}}>✕ Limpiar</button>
                       </div>
                       <div style={{fontSize:12,color:T.textSub,marginBottom:12}}>Desmarca los que no quieras agregar</div>
                       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
@@ -1352,32 +1494,36 @@ export default function App(){
                 const totalSeries=ejercicios.reduce((acc,ej)=>acc+ej.series,0);
                 const seriesHechas=Object.values(logs).flatMap(x=>x).filter(x=>x.done).length;
                 return(<>
-                  {/* Header sesión */}
-                  <div style={{padding:"14px 18px 14px",background:T.surface,borderBottom:`1px solid ${T.border}`,position:"sticky",top:0,zIndex:10,transition:"all .4s"}}>
-                    <button onClick={()=>setSesionAbierta(null)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:T.violet,fontSize:14,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,padding:0,marginBottom:10}}>← Volver al plan</button>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                      <div>
-                        <div style={{fontSize:11,color:T.violet,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>SEMANA {semNum} · {faseNombre.toUpperCase()}</div>
-                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal}}>{s.dia}</div>
-                        <div style={{fontSize:14,color:T.textSub,marginTop:1}}>{grupoNombre}</div>
+                  {/* Header sesión — gradient style matching TFEntrenaA */}
+                  <div style={{position:"sticky",top:0,zIndex:10}}>
+                    <div style={{padding:"10px 22px",background:T.bg,display:"flex",alignItems:"center"}}>
+                      <button onClick={()=>setSesionAbierta(null)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:T.textMid,fontSize:13,cursor:"pointer",fontFamily:FONTS.body,fontWeight:500,padding:0}}>
+                        <TFIcon name="arrowL" size={16}/> Volver
+                      </button>
+                    </div>
+                    <div style={{background:`linear-gradient(135deg,${T.violet},${T.violetD||T.violet})`,padding:"16px 22px",color:"#fff"}}>
+                      <div style={{fontFamily:FONTS.mono,fontSize:11,letterSpacing:"0.1em",opacity:0.8,marginBottom:4}}>SEMANA {semNum} · {faseNombre.toUpperCase()}</div>
+                      <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,letterSpacing:"-0.02em"}}>{s.dia}</div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:8}}>
+                        <div style={{fontSize:13,opacity:0.85}}>{grupoNombre}</div>
+                        {totalSeries>0&&<div style={{textAlign:"right"}}>
+                          <div style={{fontFamily:FONTS.display,fontSize:24,fontWeight:600,letterSpacing:"-0.025em"}}>{seriesHechas}/{totalSeries}</div>
+                          <div style={{fontSize:11,opacity:0.7}}>series</div>
+                        </div>}
                       </div>
-                      {totalSeries>0&&<div style={{textAlign:"right",flexShrink:0}}>
-                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:seriesHechas===totalSeries?T.sage:T.violet}}>{seriesHechas}/{totalSeries}</div>
-                        <div style={{fontSize:11,color:T.textSub}}>series</div>
+                      {totalSeries>0&&<div style={{marginTop:10,background:"rgba(255,255,255,0.2)",borderRadius:99,height:4,overflow:"hidden"}}>
+                        <div style={{width:`${(seriesHechas/totalSeries)*100}%`,height:"100%",background:"#fff",borderRadius:99,transition:"width .4s ease"}}/>
                       </div>}
                     </div>
-                    {totalSeries>0&&<div style={{marginTop:10,background:T.border,borderRadius:99,height:4,overflow:"hidden"}}>
-                      <div style={{width:`${(seriesHechas/totalSeries)*100}%`,height:"100%",background:seriesHechas===totalSeries?T.sage:T.violet,borderRadius:99,transition:"width .4s ease"}}/>
-                    </div>}
                   </div>
                   {/* Ejercicios */}
                   <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}} className="fade-in">
                     {ejercicios.length===0?(
-                      <div style={{background:T.card,borderRadius:16,padding:"28px 20px",border:`1px solid ${T.border}`,textAlign:"center"}}>
-                        <div style={{fontSize:32,marginBottom:8}}>🔄</div>
-                        <div style={{fontSize:14,color:T.charcoal,marginBottom:6,fontWeight:500}}>Esta sesión no tiene ejercicios detallados</div>
-                        <div style={{fontSize:12,color:T.textSub,marginBottom:16,lineHeight:1.6}}>Regenera el mesociclo para obtener ejercicios con series y repeticiones.</div>
-                        <button onClick={()=>{setSesionAbierta(null);generarEntrenamiento();}} style={{padding:"10px 20px",borderRadius:99,background:T.violet,border:"none",color:"#fff",fontSize:14,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>↻ Regenerar mesociclo</button>
+                      <div style={{background:T.card,borderRadius:18,padding:"28px 20px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+                        <TFIcon name="refresh" size={32} color={T.textSub}/>
+                        <div style={{fontSize:14,color:T.charcoal,marginBottom:6,fontWeight:500,marginTop:8}}>Sin ejercicios detallados</div>
+                        <div style={{fontSize:12,color:T.textSub,marginBottom:16,lineHeight:1.6}}>Regenera el mesociclo para obtener ejercicios.</div>
+                        <button onClick={()=>{setSesionAbierta(null);generarEntrenamiento();}} style={{width:"100%",padding:"12px",borderRadius:99,background:T.violet,border:"none",color:"#fff",fontSize:14,cursor:"pointer",fontFamily:FONTS.body,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><TFIcon name="refresh" size={14} color="#fff"/> Regenerar</button>
                       </div>
                     ):ejercicios.map((ej,ejIdx)=>{
                       const ejLogs=logs[ej.nombre]||Array.from({length:ej.series},()=>({reps:"",peso:"",done:false}));
@@ -1394,7 +1540,7 @@ export default function App(){
                                 {ej.series} {ej.series===1?"serie":"series"} × {ej.reps}{ej.unidad==="reps"?" reps":ej.unidad==="s"?" seg":" min"}
                               </div>
                             </div>
-                            {allDone&&<div style={{width:28,height:28,borderRadius:99,background:T.violet,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,flexShrink:0}}>✓</div>}
+                            {allDone&&<div style={{width:28,height:28,borderRadius:99,background:T.violet,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><TFIcon name="check" size={14} color="#fff"/></div>}
                           </div>
                           {/* Headers columnas */}
                           <div style={{display:"grid",gridTemplateColumns:"32px 1fr 1fr 36px",gap:6,marginBottom:5,paddingLeft:allDone?8:0}}>
@@ -1411,7 +1557,7 @@ export default function App(){
                                 <div style={{fontSize:12,fontWeight:700,color:setLog.done?T.violet:T.muted,textAlign:"center"}}>{setIdx+1}</div>
                                 <input type="number" inputMode="decimal" value={setLog.reps} onChange={e=>updateLog(s.id,ej.nombre,setIdx,"reps",e.target.value)} placeholder={String(ej.reps)} style={inputStyle}/>
                                 <input type="number" inputMode="decimal" step="0.5" value={setLog.peso} onChange={e=>updateLog(s.id,ej.nombre,setIdx,"peso",e.target.value)} placeholder="—" style={inputStyle}/>
-                                <button onClick={()=>toggleSetDone(s.id,ej.nombre,setIdx)} style={{width:36,height:36,borderRadius:99,background:setLog.done?T.violet:T.border,border:"none",color:setLog.done?"#fff":T.muted,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .25s",flexShrink:0}}>✓</button>
+                                <button onClick={()=>toggleSetDone(s.id,ej.nombre,setIdx)} style={{width:36,height:36,borderRadius:99,background:setLog.done?T.violet:T.border,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .25s",flexShrink:0}}><TFIcon name="check" size={14} color={setLog.done?"#fff":T.muted}/></button>
                               </div>
                             );
                           })}
@@ -1450,37 +1596,54 @@ export default function App(){
                       );
                     })()}
                     {/* Finalizar sesión */}
-                    <button onClick={()=>finalizarSesion(sesionAbierta)} style={{padding:"16px",borderRadius:99,background:s.completada?T.muted:seriesHechas===totalSeries&&totalSeries>0?T.sage:T.violet,border:"none",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:4,transition:"background .4s"}}>
-                      {s.completada?"✓ Sesión completada":seriesHechas===totalSeries&&totalSeries>0?"✓ ¡Todas las series! Finalizar":"Finalizar sesión →"}
+                    <button onClick={()=>finalizarSesion(sesionAbierta)} style={{width:"100%",padding:"16px",borderRadius:99,background:s.completada?T.muted:seriesHechas===totalSeries&&totalSeries>0?T.sage:T.violet,border:"none",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:FONTS.body,marginTop:4,transition:"background .4s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                      {s.completada?<><TFIcon name="check" size={16} color="#fff"/> Sesión completada</>:seriesHechas===totalSeries&&totalSeries>0?<><TFIcon name="check" size={16} color="#fff"/> ¡Todas las series! Finalizar</>:<><TFIcon name="flame" size={16} color="#fff"/> Finalizar sesión</>}
                     </button>
                   </div>
                 </>);
               })():(
-                /* ═══ VISTA LISTA DE SESIONES ═══ */
+                /* ═══ VISTA LISTA DE SESIONES — matches TFEntrenaA design ═══ */
                 <>
-                  <div style={{padding:"18px 20px 14px",background:T.surface,borderBottom:`1px solid ${T.border}`,transition:"all .4s"}}>
-                    <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:24,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal}}>La Transformación <span style={{color:T.violet,opacity:.6}}>✦</span></div>
-                    <div style={{fontSize:14,color:T.textSub,marginTop:2}}>Tu plan de entrenamiento mensual</div>
-                    {sesiones.length>0&&(
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
-                        {[[`${sesiones.filter(s=>s.completada).length}/${sesiones.length}`,"Sesiones","completadas"],[`${sesiones.length?Math.round((sesiones.filter(s=>s.completada).length/sesiones.length)*100):0}%`,"Adherencia","al plan"],["4 sem","Progreso","del plan"]].map(([v,k,sb])=>(
-                          <div key={k} style={{background:T.bg,borderRadius:12,padding:"10px 8px",textAlign:"center",transition:"background .4s"}}>
-                            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.violet}}>{v}</div>
-                            <div style={{fontSize:11,color:T.charcoal,fontWeight:500}}>{k}</div>
-                            <div style={{fontSize:11,color:T.textSub}}>{sb}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  {/* Header */}
+                  <div style={{padding:"8px 22px 14px",background:T.bg,flexShrink:0}}>
+                    <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.12em",color:T.sage,marginBottom:6}}>
+                      Mesociclo · Semana {semanaActiva} de 4
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+                      <div style={{fontFamily:FONTS.display,fontSize:28,fontWeight:600,color:T.charcoal,letterSpacing:"-0.03em",lineHeight:1.05}}>Entrena</div>
+                      <div onClick={()=>setTab("perfil")} style={{cursor:"pointer"}}><Avatar name={`${profile?.nombre||"U"} ${profile?.apellido||""}`} size={36} T={T}/></div>
+                    </div>
                   </div>
+                  {/* Mesocycle hero card */}
+                  {sesiones.length>0&&(
+                    <div style={{padding:"0 22px 18px"}}>
+                      <div style={{background:T.violet+"10",border:`1px solid ${T.violet}33`,borderRadius:18,padding:18}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                          <div>
+                            <div style={{fontSize:11,color:T.violet,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase"}}>{profile?.objetivo==="ganar_musculo"?"HIPERTROFIA":"FUERZA"}</div>
+                            <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,color:T.charcoal,letterSpacing:"-0.02em",marginTop:2}}>Mesociclo de {profile?.objetivo==="ganar_musculo"?"hipertrofia":"fuerza"}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontFamily:FONTS.display,fontSize:28,fontWeight:600,color:T.violet,letterSpacing:"-0.03em",lineHeight:1}}>{sesiones.length?Math.round((sesiones.filter(s=>s.completada).length/sesiones.length)*100):0}%</div>
+                            <div style={{fontSize:11,color:T.textSub,marginTop:2}}>de progreso</div>
+                          </div>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:6}}>
+                          {[1,2,3,4].map(i=>(
+                            <div key={i} onClick={()=>setSemanaActiva(i)} style={{height:32,borderRadius:8,background:i<semanaActiva?T.violet:i===semanaActiva?T.violet+"44":T.surface,border:`1px solid ${i===semanaActiva?T.violet:T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:i<semanaActiva?"#fff":T.textMid,fontFamily:FONTS.mono,cursor:"pointer"}}>S{i}</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}} className="mode-in">
                     {entrenamientoError&&<div style={{fontSize:12,color:T.clay,background:T.clay+"18",padding:12,borderRadius:12}}>{entrenamientoError}</div>}
                     {sesiones.length===0?(
-                      <div style={{background:T.card,borderRadius:16,padding:"32px 24px",border:`1px solid ${T.border}`,textAlign:"center"}}>
-                        <div style={{fontSize:32,marginBottom:14}}>💪</div>
-                        <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:8}}>Sin plan aún</div>
+                      <div style={{background:T.card,borderRadius:18,padding:"32px 24px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+                        <div style={{width:56,height:56,borderRadius:99,background:T.violet+"18",color:T.violet,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><TFIcon name="dumbbell" size={28}/></div>
+                        <div style={{fontFamily:FONTS.display,fontSize:20,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:8}}>Sin plan aún</div>
                         <div style={{fontSize:14,color:T.textMid,marginBottom:18,lineHeight:1.6}}>Genera tu primer mesociclo personalizado de 4 semanas.</div>
-                        <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{padding:"13px 28px",borderRadius:99,background:entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",fontSize:14,cursor:entrenamientoLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>{entrenamientoLoading?"Generando...":"✦ Generar Mesociclo"}</button>
+                        <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{width:"100%",padding:"14px",borderRadius:99,background:entrenamientoLoading?T.muted:T.violet,border:"none",color:"#fff",fontSize:15,cursor:entrenamientoLoading?"default":"pointer",fontFamily:FONTS.body,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><TFIcon name="sparkles" size={16} color="#fff"/>{entrenamientoLoading?"Generando...":"Generar Mesociclo"}</button>
                       </div>
                     ):(<>
                       {/* Selector semanas */}
@@ -1497,28 +1660,29 @@ export default function App(){
                         <div style={{fontSize:11,color:T.violet,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>SEMANA {semanaActiva}</div>
                         <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,color:T.charcoal}}>Semana de {["Activación","Volumen","Intensidad","Descarga"][semanaActiva-1]}</div>
                       </div>
-                      {/* Cards de sesiones */}
-                      {sesPorSemana(semanaActiva).length>0?sesPorSemana(semanaActiva).map(s=>{
+                      {/* Cards de sesiones — matches TFEntrenaA exercise list */}
+                      {sesPorSemana(semanaActiva).length>0?sesPorSemana(semanaActiva).map((s,sIdx)=>{
                         const ejercicios=parsarEjercicios(s.descripcion);
                         const sLogs=s.logs||{};
                         const totalSer=ejercicios.reduce((acc,ej)=>acc+ej.series,0);
                         const hechas=Object.values(sLogs).flatMap(x=>x).filter(x=>x.done).length;
+                        const isActive=!s.completada&&sIdx===sesPorSemana(semanaActiva).findIndex(x=>!x.completada);
                         return(
-                          <div key={s.id} style={{background:T.card,borderRadius:16,border:`1.5px solid ${s.completada?T.violet+"55":T.border}`,overflow:"hidden",transition:"all .25s",position:"relative"}}>
-                            {s.completada&&<div style={{position:"absolute",top:0,left:0,width:4,height:"100%",background:T.violet}}/>}
-                            <div style={{padding:"15px 16px",display:"flex",alignItems:"center",gap:12}}>
-                              <div style={{width:44,height:44,borderRadius:12,background:s.completada?T.violet+"22":T.bg,border:`1.5px solid ${s.completada?T.violet+"66":T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,flexShrink:0,transition:"all .3s"}}>{s.completada?"✓":"🏋️"}</div>
+                          <div key={s.id} style={{background:T.card,borderRadius:18,border:`1px solid ${T.border}`,overflow:"hidden",transition:"all .25s"}}>
+                            <div onClick={()=>abrirSesion(s.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",cursor:"pointer"}}>
+                              <div style={{width:22,height:22,borderRadius:99,background:s.completada?T.sage:"transparent",border:`1.5px solid ${s.completada?T.sage:isActive?T.violet:T.border2}`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                                {s.completada&&<TFIcon name="check" size={12} color="#fff"/>}
+                              </div>
                               <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:14,fontWeight:600,color:s.completada?T.textSub:T.charcoal}}>{s.dia}</div>
-                                <div style={{fontSize:12,color:s.completada?T.muted:T.violet,marginTop:1,fontWeight:500}}>{(s.grupo||"").replace(/^Sem \d+ · /,"")}</div>
-                                <div style={{fontSize:11,color:T.textSub,marginTop:2}}>
-                                  {ejercicios.length>0?`${ejercicios.length} ejercicios${totalSer>0?` · ${hechas}/${totalSer} series`:""}`:s.descripcion?"Ver ejercicios":"Sin detalle — regenerar"}
-                                  {s.rpe>0&&<span style={{color:s.rpe>=7?T.clay:s.rpe>=4?T.sand:T.sage,fontWeight:600}}> · RPE {s.rpe}/10</span>}
+                                <div style={{fontSize:14,fontWeight:isActive?600:500,color:s.completada?T.textSub:T.charcoal,textDecoration:s.completada?"line-through":"none"}}>{s.dia}</div>
+                                <div style={{fontSize:11,color:T.textSub,marginTop:2,fontFamily:FONTS.mono}}>
+                                  {(s.grupo||"").replace(/^Sem \d+ · /,"")}
+                                  {ejercicios.length>0&&` · ${ejercicios.length} ej`}
+                                  {totalSer>0&&hechas>0&&!s.completada&&` · ${hechas}/${totalSer}`}
                                 </div>
                               </div>
-                              <button onClick={()=>abrirSesion(s.id)} style={{padding:"9px 16px",borderRadius:99,background:s.completada?T.border:T.violet,border:"none",color:s.completada?T.textMid:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0,transition:"all .2s"}}>
-                                {s.completada?"Ver":"Iniciar →"}
-                              </button>
+                              {isActive&&<span style={{fontSize:11,color:T.violet,fontWeight:600,padding:"3px 8px",background:T.violet+"22",borderRadius:99}}>IR</span>}
+                              {s.completada&&s.rpe>0&&<span style={{fontSize:11,color:s.rpe>=7?T.clay:T.sage,fontWeight:600}}>RPE {s.rpe}</span>}
                             </div>
                             {totalSer>0&&hechas>0&&!s.completada&&(
                               <div style={{height:3,background:T.border}}>
@@ -1528,15 +1692,15 @@ export default function App(){
                           </div>
                         );
                       }):(
-                        <div style={{background:T.card,borderRadius:16,padding:"24px 20px",border:`1px solid ${T.border}`,textAlign:"center"}}>
-                          <div style={{fontSize:28,marginBottom:8}}>🔒</div>
-                          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:14,color:T.charcoal,marginBottom:4}}>Sin sesiones en esta semana</div>
+                        <div style={{background:T.card,borderRadius:18,padding:"24px 20px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+                          <TFIcon name="lock" size={28} color={T.textSub}/>
+                          <div style={{fontFamily:FONTS.display,fontSize:14,fontWeight:500,color:T.charcoal,marginBottom:4,marginTop:8}}>Sin sesiones en esta semana</div>
                           <div style={{fontSize:12,color:T.textSub,lineHeight:1.6}}>Regenera el mesociclo para obtener sesiones.</div>
                         </div>
                       )}
-                      {/* Regenerar */}
-                      <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{padding:"12px",borderRadius:99,border:`1.5px solid ${T.violet}`,background:"transparent",color:T.violet,fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500,cursor:entrenamientoLoading?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
-                        {entrenamientoLoading?"Regenerando...":"↻ Regenerar mesociclo con IA"}
+                      {/* Regenerar — matches design button style */}
+                      <button onClick={generarEntrenamiento} disabled={entrenamientoLoading} style={{width:"100%",padding:"14px",borderRadius:99,border:`1.5px solid ${T.violet}`,background:"transparent",color:T.violet,fontFamily:FONTS.body,fontSize:14,fontWeight:500,cursor:entrenamientoLoading?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
+                        <TFIcon name="refresh" size={14}/>{entrenamientoLoading?"Regenerando...":"Regenerar mesociclo con IA"}
                       </button>
                     </>)}
                   </div>
@@ -1548,23 +1712,34 @@ export default function App(){
           {/* ═══ ASISTENTE ═══ */}
           {tab==="asistente"&&(
             <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 104px)"}}>
-              <div style={{padding:"14px 18px 12px",background:T.surface,borderBottom:`1px solid ${T.border}`,flexShrink:0,transition:"all .4s",display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:38,height:38,borderRadius:99,background:`linear-gradient(135deg,${T.sage},${T.violet})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><TFIcon name="sparkles" size={18} color="#fff"/></div>
+              <div style={{padding:"12px 22px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:12,flexShrink:0,transition:"all .4s"}}>
+                <div style={{width:40,height:40,borderRadius:99,background:`linear-gradient(135deg,${T.sage},${T.violet})`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><TFIcon name="sparkles" size={20} color="#fff"/></div>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:FONTS.display,fontSize:17,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal}}>Asistente TriFlow</div>
-                  <div style={{fontSize:11,color:T.sage,marginTop:1,display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:99,background:"#4CAF50",display:"inline-block"}}/>En linea</div>
+                  <div style={{fontSize:11,color:T.sage,display:"flex",alignItems:"center",gap:4}}>
+                    <div style={{width:6,height:6,borderRadius:99,background:T.sage}}/>
+                    En línea · sabe todo de ti
+                  </div>
                 </div>
+                <button onClick={()=>{setMsgs([msgs[0]]);setAccionSugerida(null);}} style={{width:36,height:36,borderRadius:99,background:"transparent",border:`1px solid ${T.border}`,color:T.charcoal,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><TFIcon name="refresh" size={16}/></button>
               </div>
-              <div style={{flex:1,overflowY:"auto",padding:"14px 14px 8px",display:"flex",flexDirection:"column",gap:12,background:T.bg}}>
+              <div style={{flex:1,overflowY:"auto",padding:"16px 22px",display:"flex",flexDirection:"column",gap:14,background:T.bg}}>
                 {msgs.map((m,i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",gap:9}}>
-                    {m.role==="assistant"&&<div style={{width:29,height:29,borderRadius:99,background:`linear-gradient(135deg,${T.sage},${T.violet})`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:3}}><TFIcon name="sparkles" size={12} color="#fff"/></div>}
-                    <div style={{maxWidth:"78%",padding:"11px 14px",background:m.role==="user"?T.sage:T.surface,border:m.role==="user"?"none":`1px solid ${T.border}`,borderRadius:m.role==="user"?"18px 18px 4px 18px":"4px 18px 18px 18px",fontSize:14,color:m.role==="user"?"#fff":T.charcoal,lineHeight:1.65,transition:"background .4s,border-color .4s"}}>
-                      {m.text.split("\n").map((line,j,arr)=><span key={j}>{line.split(/(\*\*[^*]+\*\*)/).map((p,k)=>p.startsWith("**")?<strong key={k}>{p.slice(2,-2)}</strong>:p)}{j<arr.length-1&&<br/>}</span>)}
+                  <div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"82%"}}>
+                    <div style={{background:m.role==="user"?T.sage:T.surface,border:m.role==="user"?"none":`1px solid ${T.border}`,borderRadius:m.role==="user"?"18px 18px 4px 18px":"4px 18px 18px 18px",padding:"12px 14px"}}>
+                      <div style={{fontSize:14,color:m.role==="user"?"#fff":T.charcoal,lineHeight:1.5}}>
+                        {m.text.split("\n").map((line,j,arr)=><span key={j}>{line.split(/(\*\*[^*]+\*\*)/).map((p,k)=>p.startsWith("**")?<strong key={k}>{p.slice(2,-2)}</strong>:p)}{j<arr.length-1&&<br/>}</span>)}
+                      </div>
                     </div>
                   </div>
                 ))}
-                {chatLoading&&<div style={{display:"flex",gap:9,alignItems:"flex-end"}}><div style={{width:29,height:29,borderRadius:99,background:`linear-gradient(135deg,${T.sage},${T.violet})`,display:"flex",alignItems:"center",justifyContent:"center"}}><TFIcon name="sparkles" size={12} color="#fff"/></div><div style={{padding:"11px 14px",borderRadius:"4px 18px 18px 18px",background:T.surface,border:`1px solid ${T.border}`}}><div style={{display:"flex",gap:5}}>{[0,1,2].map(i=><div key={i} style={{width:7,height:7,borderRadius:99,background:T.sage,animation:`pulse 1.2s ease-in-out ${i*.2}s infinite`}}/>)}</div></div></div>}
+                {chatLoading&&(
+                  <div style={{alignSelf:"flex-start"}}>
+                    <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:"4px 18px 18px 18px",padding:"14px 16px",display:"flex",gap:4}}>
+                      {[0,1,2].map(i=><div key={i} style={{width:7,height:7,borderRadius:99,background:T.textSub,animation:`pulse 1.4s ${i*.2}s infinite`}}/>)}
+                    </div>
+                  </div>
+                )}
                 <div ref={chatBottom}/>
               </div>
               {/* ── Acción sugerida (sticky sobre el input) ── */}
@@ -1594,15 +1769,16 @@ export default function App(){
                   </div>
                 </div>
               )}
-              <div style={{padding:"7px 10px",display:"flex",gap:6,overflowX:"auto",background:T.surface,borderTop:`1px solid ${T.border}`,flexShrink:0}}>
-                {["¿Qué puedo cocinar con mi despensa?","Genera mi menú semanal","Crea mi plan de entrenamiento","¿Cómo voy con mi objetivo?"].map(s=>(
-                  <button key={s} onClick={()=>setChatInput(s)} style={{padding:"6px 12px",borderRadius:99,fontSize:11,border:`1px solid ${T.border}`,background:T.card,color:T.textMid,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'DM Sans',sans-serif",flexShrink:0,transition:"all .3s"}}>{s}</button>
+              <div style={{padding:"8px 22px",display:"flex",gap:6,flexWrap:"wrap",background:T.surface,borderTop:`1px solid ${T.border}`,flexShrink:0}}>
+                {["¿Qué cocino hoy?","Genera mi menú","Plan de entrenamiento","¿Cómo voy?"].map(s=>(
+                  <button key={s} onClick={()=>setChatInput(s)} style={{padding:"8px 14px",borderRadius:99,background:"transparent",border:`1.5px solid ${T.sage}55`,color:T.sage,fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>{s}</button>
                 ))}
               </div>
-              <div style={{padding:"8px 10px 12px",display:"flex",gap:8,background:T.surface,borderTop:`1px solid ${T.border}`,flexShrink:0}}>
-                <div style={{flex:1,display:"flex",alignItems:"center",borderRadius:99,border:`1.5px solid ${T.border}`,background:T.card,padding:"0 4px 0 16px",transition:"all .4s"}}>
-                  <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()} placeholder="Escribe tu consulta..." style={{flex:1,padding:"11px 0",border:"none",background:"transparent",fontSize:14,color:T.charcoal,outline:"none",fontFamily:FONTS.body}}/>
-                  <button onClick={sendChat} disabled={chatLoading} style={{width:38,height:38,borderRadius:99,background:chatLoading?T.muted:T.sage,border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:chatLoading?"default":"pointer",flexShrink:0,transition:"background .2s"}}><TFIcon name="send" size={16} color="#fff"/></button>
+              {/* Composer */}
+              <div style={{padding:"12px 22px 14px",borderTop:`1px solid ${T.border}`,flexShrink:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,background:T.surface,border:`1px solid ${T.border}`,borderRadius:99,padding:"8px 8px 8px 16px"}}>
+                  <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()} placeholder="Pregúntame algo..." style={{flex:1,border:"none",background:"transparent",outline:"none",color:T.charcoal,fontSize:14,fontFamily:FONTS.body}}/>
+                  <button onClick={sendChat} disabled={chatLoading} style={{width:32,height:32,borderRadius:99,background:chatLoading?T.muted:T.sage,color:"#fff",border:"none",cursor:chatLoading?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"background .2s"}}><TFIcon name="send" size={14} color="#fff"/></button>
                 </div>
               </div>
             </div>
@@ -1611,60 +1787,117 @@ export default function App(){
           {/* ═══ PERFIL ═══ */}
           {tab==="perfil"&&(
             <div style={{paddingBottom:16}}>
-              {/* Profile hero */}
-              <div style={{padding:"28px 20px 20px",background:T.surface,borderBottom:`1px solid ${T.border}`,textAlign:"center",transition:"all .4s"}}>
-                <div style={{width:96,height:96,borderRadius:99,background:`linear-gradient(135deg,${T.sage},${T.violet})`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",fontSize:36,color:"#fff",fontFamily:FONTS.display,fontWeight:600}}>
+              {/* Profile hero — matches TFPerfil design */}
+              <div style={{padding:"22px 22px 28px",textAlign:"center"}}>
+                <div style={{width:96,height:96,borderRadius:99,margin:"0 auto",background:`linear-gradient(135deg,${T.sage},${T.violet})`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONTS.display,fontSize:36,fontWeight:600,letterSpacing:"-0.03em",marginBottom:14}}>
                   {(profile?.nombre||"U")[0]}{(profile?.apellido||"")[0]}
                 </div>
-                <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal,display:"flex",alignItems:"center",justifyContent:"center",gap:6,flexWrap:"wrap"}}>
+                <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal}}>
                   {profile?.nombre} {profile?.apellido}
-                  {profile?.pais&&(()=>{const p=PAISES.find(x=>x.n===profile.pais);return p?<span title={p.n} style={{fontSize:20}}>{p.f}</span>:null;})()}
                 </div>
-                <div style={{fontSize:13,color:T.textSub,marginTop:4}}>{user?.email}</div>
-                <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginTop:10}}>
-                  <Chip color={T.sage} T={T}>{profile?.objetivo?.replace(/_/g," ")}</Chip>
-                  {profile?.restricciones?.map(r=><Chip key={r} color={T.sand} T={T}>{r}</Chip>)}
-                </div>
-                {/* Stat badges */}
-                <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:16}}>
-                  {[
-                    {icon:"flame",label:"Peso actual",value:`${profile?.peso_actual||"—"} kg`,color:T.charcoal},
-                    {icon:"target",label:"Meta",value:`${profile?.peso_meta||"—"} kg`,color:T.sage},
-                    {icon:"dumbbell",label:"Sesiones",value:sesiones.filter(s=>s.completada).length,color:T.violet}
-                  ].map(s=>(
-                    <div key={s.label} style={{flex:1,background:T.card,borderRadius:14,padding:"10px 6px",border:`1px solid ${T.border}`,transition:"all .4s"}}>
-                      <TFIcon name={s.icon} size={16} color={s.color}/>
-                      <div style={{fontFamily:FONTS.display,fontSize:18,fontWeight:600,color:s.color,marginTop:4}}>{s.value}</div>
-                      <div style={{fontSize:10,color:T.textSub,fontFamily:FONTS.mono,textTransform:"uppercase",letterSpacing:"0.05em",marginTop:2}}>{s.label}</div>
-                    </div>
-                  ))}
+                <div style={{fontSize:13,color:T.textMid,marginTop:4}}>{user?.email}</div>
+                {/* 3 stat row */}
+                <div style={{display:"flex",justifyContent:"center",gap:18,marginTop:18}}>
+                  {(()=>{
+                    let racha=0;const hoyD=new Date();const hoy2=localDate();
+                    for(let i=0;i<60;i++){const d=new Date(hoyD);d.setDate(hoyD.getDate()-i);const f=d.toLocaleDateString("en-CA");if(habitosDiarios.some(h=>h.fecha===f))racha++;else if(i>0)break;}
+                    const cambio=historialPeso.length>=2?(parseFloat(historialPeso[historialPeso.length-1].peso)-parseFloat(historialPeso[0].peso)).toFixed(1):"0";
+                    const totalHab=habitosDiarios.length;
+                    return[
+                      [String(racha),"Días seguidos","sage"],
+                      [`${parseFloat(cambio)>=0?"+":""}${cambio}kg`,"Progreso","clay"],
+                      [String(totalHab),"Hábitos","violet"]
+                    ].map(([v,l,c])=>(
+                      <div key={l} style={{textAlign:"center"}}>
+                        <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,color:T[c],letterSpacing:"-0.02em"}}>{v}</div>
+                        <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{l}</div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
-              <div style={{padding:"18px 18px"}}>
-                {/* Cuenta section */}
-                <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.12em",color:T.sage,marginBottom:10}}>CUENTA</div>
-                <div style={{background:T.card,borderRadius:18,padding:"16px",border:`1px solid ${T.border}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,transition:"all .4s"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:12,flex:1,minWidth:0}}>
-                    <TFIcon name="leaf" size={18} color={T.sage}/>
-                    <div>
-                      <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>País</div>
+              <div style={{padding:"0 22px 18px"}}>
+                {/* Cuenta section — icon row list */}
+                <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:8}}>Cuenta</div>
+                {[
+                  {ic:"target",t:"Mis objetivos",d:(profile?.objetivo?.replace(/_/g," ")||"—")+" · "+(profile?.peso_meta||"—")+" kg",c:"sage",action:()=>setShowObjetivoModal(true)},
+                  {ic:"leaf",t:"Restricciones",d:profile?.restricciones?.length?profile.restricciones.join(", "):"Ninguna",c:"clay"},
+                  {ic:"dumbbell",t:"Entrenamiento",d:`${profile?.dias_entrenamiento||3} días · ${profile?.objetivo==="ganar_musculo"?"Hipertrofia":"Fuerza"}`,c:"violet"},
+                  {ic:"weight",t:"Historial de peso",d:"Ver tendencia",c:"sky",action:()=>setShowPesoPage(true)},
+                ].map(row=>(
+                  <div key={row.t} onClick={row.action} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:`1px solid ${T.border}`,cursor:row.action?"pointer":"default"}}>
+                    <div style={{width:38,height:38,borderRadius:10,background:T[row.c]+"22",color:T[row.c],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <TFIcon name={row.ic} size={18}/>
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>{row.t}</div>
+                      <div style={{fontSize:12,color:T.textSub,marginTop:1}}>{row.d}</div>
+                    </div>
+                    <TFIcon name="chevron" size={16} color={T.textSub}/>
+                  </div>
+                ))}
+
+                {/* Preferencias section */}
+                <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginTop:22,marginBottom:8}}>Preferencias</div>
+                {/* Notifications row */}
+                <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:`1px solid ${T.border}`}}>
+                  <div style={{width:38,height:38,borderRadius:10,background:T.surface,border:`1px solid ${T.border}`,color:T.charcoal,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <TFIcon name="bell" size={18}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>Notificaciones</div>
+                    <div style={{fontSize:12,color:T.textSub,marginTop:1}}>Activadas</div>
+                  </div>
+                  <TFIcon name="chevron" size={16} color={T.textSub}/>
+                </div>
+                {/* Appearance row */}
+                <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:`1px solid ${T.border}`}}>
+                  <div style={{width:38,height:38,borderRadius:10,background:T.surface,border:`1px solid ${T.border}`,color:T.charcoal,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <TFIcon name={dark?"moon":"sun"} size={18}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>Apariencia</div>
+                    <div style={{fontSize:12,color:T.textSub,marginTop:1}}>{dark?"Oscuro":"Claro"}</div>
+                  </div>
+                  <ThemeToggle dark={dark} toggle={toggleTheme} T={T}/>
+                </div>
+                {/* Privacy row */}
+                <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:`1px solid ${T.border}`}}>
+                  <div style={{width:38,height:38,borderRadius:10,background:T.surface,border:`1px solid ${T.border}`,color:T.charcoal,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <TFIcon name="settings" size={18}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>Privacidad</div>
+                    <div style={{fontSize:12,color:T.textSub,marginTop:1}}>Gestionar datos</div>
+                  </div>
+                  <TFIcon name="chevron" size={16} color={T.textSub}/>
+                </div>
+
+                {/* País selector (functional) */}
+                <div style={{marginTop:18}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:`1px solid ${T.border}`}}>
+                    <div style={{width:38,height:38,borderRadius:10,background:T.sage+"22",color:T.sage,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <TFIcon name="leaf" size={18}/>
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>País</div>
                       <div style={{fontSize:12,color:T.textSub,marginTop:1}}>Menús con comida local</div>
                     </div>
+                    <select value={profile?.pais||"Chile"} onChange={async e=>{const np=e.target.value;setProfile(p=>({...p,pais:np}));await supabase.from("profiles").update({pais:np}).eq("id",user.id);}} style={{padding:"7px 10px",borderRadius:10,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:13,color:T.charcoal,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none"}}>
+                      {PAISES.map(p=>(<option key={p.n} value={p.n}>{p.f}  {p.n}</option>))}
+                    </select>
                   </div>
-                  <select value={profile?.pais||"Chile"} onChange={async e=>{const np=e.target.value;setProfile(p=>({...p,pais:np}));await supabase.from("profiles").update({pais:np}).eq("id",user.id);}} style={{padding:"7px 10px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:14,color:T.charcoal,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",outline:"none"}}>
-                    {PAISES.map(p=>(<option key={p.n} value={p.n}>{p.f}  {p.n}</option>))}
-                  </select>
                 </div>
-                <div style={{background:T.card,borderRadius:18,padding:"16px",border:`1px solid ${T.border}`,marginBottom:10,transition:"all .4s"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <TFIcon name="dumbbell" size={18} color={T.violet}/>
-                      <div>
-                        <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>Días de entrenamiento</div>
-                        <div style={{fontSize:12,color:T.textSub,marginTop:1}}>Sesiones por semana</div>
-                      </div>
+                {/* Entrenamiento días selector */}
+                <div style={{marginTop:12,padding:"14px 0"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+                    <div style={{width:38,height:38,borderRadius:10,background:T.violet+"22",color:T.violet,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <TFIcon name="dumbbell" size={18}/>
                     </div>
-                    <span style={{fontSize:14,fontWeight:700,color:T.violet}}>{profile?.dias_entrenamiento||3} días/sem</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>Días de entrenamiento</div>
+                      <div style={{fontSize:12,color:T.textSub,marginTop:1}}>{profile?.dias_entrenamiento||3} días por semana</div>
+                    </div>
                   </div>
                   <div style={{display:"flex",gap:6}}>
                     {[2,3,4,5,6].map(d=>{const a=(profile?.dias_entrenamiento||3)===d;return(
@@ -1672,30 +1905,11 @@ export default function App(){
                     );})}
                   </div>
                 </div>
-                {/* Preferencias section */}
-                <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.12em",color:T.sage,marginTop:18,marginBottom:10}}>PREFERENCIAS</div>
-                <div style={{background:T.card,borderRadius:18,padding:"16px",border:`1px solid ${T.border}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",transition:"all .4s"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:12}}>
-                    <TFIcon name={dark?"moon":"sun"} size={18} color={T.sage}/>
-                    <div><div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{dark?"Modo oscuro":"Modo claro"}</div><div style={{fontSize:12,color:T.textSub,marginTop:1}}>Apariencia de la app</div></div>
-                  </div>
-                  <ThemeToggle dark={dark} toggle={toggleTheme} T={T}/>
-                </div>
-                <div onClick={()=>setShowObjetivoModal(true)} style={{background:T.card,borderRadius:18,padding:"16px",border:`1px solid ${T.border}`,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",transition:"all .4s"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:12}}>
-                    <TFIcon name="target" size={18} color={T.sage}/>
-                    <div>
-                      <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>Objetivo actual</div>
-                      <div style={{fontSize:12,color:T.textSub,marginTop:2,textTransform:"capitalize"}}>{profile?.objetivo?.replace(/_/g," ")||"—"}</div>
-                    </div>
-                  </div>
-                  <TFIcon name="chevron" size={16} color={T.muted}/>
-                </div>
+
                 {/* Logout */}
-                <div onClick={logout} style={{textAlign:"center",marginTop:24,cursor:"pointer",transition:"all .2s"}}>
-                  <div style={{display:"inline-flex",alignItems:"center",gap:8,color:T.clay,fontSize:14,fontWeight:500}}>
-                    <TFIcon name="logout" size={16} color={T.clay}/> Cerrar sesion
-                  </div>
+                <div style={{marginTop:22,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:12,cursor:"pointer"}} onClick={logout}>
+                  <TFIcon name="logout" size={16} color={T.clay}/>
+                  <span style={{color:T.clay,fontSize:13,fontWeight:500}}>Cerrar sesión</span>
                 </div>
               </div>
             </div>
@@ -1713,85 +1927,182 @@ export default function App(){
           </button>
         );})}
       </div>
+      {/* ═══ PESO SUB-PAGE — matches TFPeso design ═══ */}
+      {showPesoPage&&(()=>{
+        const sortedPeso=[...historialPeso].sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
+        const pesoActual=sortedPeso.length>0?parseFloat(sortedPeso[sortedPeso.length-1].peso):parseFloat(profile?.peso_actual||70);
+        const pesoMeta=parseFloat(profile?.peso_meta||66);
+        const cambioTotal=sortedPeso.length>=2?pesoActual-parseFloat(sortedPeso[0].peso):0;
+        const faltante=Math.abs(pesoActual-pesoMeta).toFixed(1);
+        // Chart data — last 12 entries or all
+        const chartData=sortedPeso.slice(-12).map(p=>parseFloat(p.peso));
+        const chartW=340,chartH=160;
+        let chartPath="",chartPts=[],goalY=0;
+        if(chartData.length>=2){
+          const mn=Math.min(...chartData,pesoMeta)-1,mx=Math.max(...chartData)+1,rng=mx-mn;
+          const stepX=chartW/(chartData.length-1);
+          chartPts=chartData.map((v,i)=>[i*stepX,chartH-((v-mn)/rng)*chartH]);
+          chartPath=chartPts.map((p,i)=>(i?"L":"M")+p[0]+" "+p[1]).join(" ");
+          goalY=chartH-((pesoMeta-mn)/rng)*chartH;
+        }
+        // Recent records
+        const recientes=sortedPeso.slice(-5).reverse();
+        return(
+          <div style={{position:"fixed",inset:0,background:T.bg,zIndex:9999,overflowY:"auto",animation:"modeIn .25s ease"}}>
+            <div style={{padding:"12px 22px 18px"}}>
+              <div onClick={()=>setShowPesoPage(false)} style={{display:"flex",alignItems:"center",gap:6,color:T.textMid,fontSize:13,marginBottom:14,cursor:"pointer"}}>
+                <TFIcon name="arrowL" size={16}/> Perfil
+              </div>
+              <div style={{fontFamily:FONTS.mono,fontSize:10,color:T.sage,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4}}>
+                {sortedPeso.length>0?`Últimos ${Math.min(sortedPeso.length,12)} registros`:"Sin registros"}
+              </div>
+              <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+                <span style={{fontFamily:FONTS.display,fontSize:52,fontWeight:600,letterSpacing:"-0.04em",lineHeight:1,color:T.charcoal}}>{pesoActual.toFixed(1)}</span>
+                <span style={{fontSize:14,color:T.textMid}}>kg</span>
+                {cambioTotal!==0&&<div style={{marginLeft:"auto",padding:"4px 10px",background:(cambioTotal<0?T.sage:T.clay)+"22",color:cambioTotal<0?T.sage:T.clay,borderRadius:99,fontSize:12,fontWeight:600}}>{cambioTotal<0?"":"+"}{cambioTotal.toFixed(1)}kg</div>}
+              </div>
+              <div style={{fontSize:13,color:T.textMid,marginTop:6}}>Te faltan <b style={{color:T.charcoal}}>{faltante} kg</b> para tu meta de <b style={{color:T.charcoal}}>{pesoMeta} kg</b>.</div>
+            </div>
+            {/* Chart */}
+            {chartData.length>=2&&(
+              <div style={{padding:"0 22px 22px"}}>
+                <div style={{background:T.card,borderRadius:18,padding:14,border:`1px solid ${T.border}`}}>
+                  <svg viewBox={`-20 -20 ${chartW+40} ${chartH+50}`} width="100%" height={chartH+40} style={{display:"block"}}>
+                    <line x1="0" x2={chartW} y1={goalY} y2={goalY} stroke={T.sage} strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>
+                    <text x={chartW} y={goalY-6} textAnchor="end" fontSize="10" fontFamily={FONTS.mono} fill={T.sage}>META {pesoMeta}kg</text>
+                    <path d={`${chartPath} L${chartW} ${chartH} L0 ${chartH} Z`} fill={T.sage} opacity="0.12"/>
+                    <path d={chartPath} fill="none" stroke={T.sage} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    {chartPts.map((p,i)=>(
+                      <circle key={i} cx={p[0]} cy={p[1]} r={i===chartPts.length-1?5:2.5} fill={i===chartPts.length-1?T.sage:T.card} stroke={T.sage} strokeWidth="2"/>
+                    ))}
+                  </svg>
+                </div>
+              </div>
+            )}
+            {/* Registros recientes */}
+            <div style={{padding:"0 22px 22px"}}>
+              <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:8}}>Registros recientes</div>
+              {recientes.map((r,i)=>{
+                const dt=i<recientes.length-1?(parseFloat(r.peso)-parseFloat(recientes[i+1].peso)).toFixed(1):0;
+                const dtNum=parseFloat(dt);
+                return(
+                  <div key={r.id||i} style={{display:"flex",alignItems:"center",gap:14,padding:"13px 0",borderBottom:`1px solid ${T.border}`}}>
+                    <span style={{fontFamily:FONTS.mono,fontSize:11,color:T.textSub,width:60}}>{new Date(r.fecha).toLocaleDateString("es-CL",{day:"numeric",month:"short"})}</span>
+                    <span style={{fontFamily:FONTS.display,fontSize:18,fontWeight:600,color:T.charcoal,letterSpacing:"-0.02em",flex:1}}>{parseFloat(r.peso).toFixed(1)} <span style={{fontSize:11,color:T.textSub,fontWeight:400}}>kg</span></span>
+                    {dtNum!==0&&<span style={{fontSize:12,color:dtNum<0?T.sage:T.clay,fontWeight:600}}>{dtNum>0?"+":""}{dt}</span>}
+                  </div>
+                );
+              })}
+              {/* Register weight button */}
+              <button onClick={()=>{setShowPesoPage(false);setShowPesoInput(true);setNuevoPesoVal(pesoActual.toFixed(1));}} style={{width:"100%",marginTop:18,padding:"14px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:FONTS.body,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                <TFIcon name="plus" size={16} color="#fff"/> Registrar peso de hoy
+              </button>
+            </div>
+          </div>
+        );
+      })()}
       {showWarningEntrenamiento&&(
-        <div onClick={()=>setShowWarningEntrenamiento(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(3px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:16,padding:"28px 24px",maxWidth:340,width:"100%",border:`1px solid ${T.border}`,animation:"modeIn .25s ease",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}}>
+        <div onClick={()=>setShowWarningEntrenamiento(false)} style={{position:"fixed",inset:0,background:"rgba(15,23,23,0.36)",zIndex:9999,display:"flex",alignItems:"flex-end",backdropFilter:"blur(3px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:"24px 24px 0 0",boxShadow:"0 -20px 60px rgba(0,0,0,0.18)",padding:"16px 22px 28px",width:"100%",animation:"slideUp .3s ease"}}>
+            <div style={{width:40,height:4,background:T.border,borderRadius:99,margin:"0 auto 16px"}}/>
             <div style={{textAlign:"center",marginBottom:18}}>
-              <div style={{fontSize:32,marginBottom:10}}>⚠️</div>
-              <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:10}}>¿Reemplazar plan actual?</div>
+              <div style={{width:48,height:48,borderRadius:99,background:T.clay+"18",color:T.clay,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><TFIcon name="flame" size={24}/></div>
+              <div style={{fontFamily:FONTS.display,fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:10}}>¿Reemplazar plan actual?</div>
               <div style={{fontSize:14,color:T.textMid,lineHeight:1.7}}>
-                Tienes <strong style={{color:T.clay}}>{sesiones.filter(s=>!s.completada).length} sesiones</strong> pendientes con registros de peso y repeticiones. Al generar un nuevo mesociclo, todo ese progreso se perderá.
+                Tienes <strong style={{color:T.clay}}>{sesiones.filter(s=>!s.completada).length} sesiones</strong> pendientes. Al generar un nuevo mesociclo, el progreso se perderá.
               </div>
             </div>
-            <div style={{display:"flex",gap:10,marginTop:4}}>
-              <button onClick={()=>{setShowWarningEntrenamiento(false);setAccionSugerida(null);}} style={{flex:1,padding:"12px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cancelar</button>
-              <button onClick={()=>{setShowWarningEntrenamiento(false);ejecutarAccionAsistente("entrenamiento",null);}} style={{flex:1,padding:"12px",borderRadius:99,background:T.clay,border:"none",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>Sí, reemplazar</button>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>{setShowWarningEntrenamiento(false);setAccionSugerida(null);}} style={{flex:1,padding:"14px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:FONTS.body}}>Cancelar</button>
+              <button onClick={()=>{setShowWarningEntrenamiento(false);ejecutarAccionAsistente("entrenamiento",null);}} style={{flex:1,padding:"14px",borderRadius:99,background:T.clay,border:"none",color:"#fff",cursor:"pointer",fontSize:14,fontWeight:600,fontFamily:FONTS.body}}>Sí, reemplazar</button>
             </div>
           </div>
         </div>
       )}
       {showObjetivoModal&&(
-        <div onClick={()=>setShowObjetivoModal(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(3px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:16,padding:"28px 24px",maxWidth:380,width:"100%",border:`1px solid ${T.border}`,animation:"modeIn .25s ease",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}}>
-            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:6}}>Cambiar objetivo</div>
-            <div style={{fontSize:13,color:T.textSub,marginBottom:20,lineHeight:1.6}}>Selecciona tu nuevo objetivo. Esto no borra tus planes actuales, pero te recomendamos regenerarlos para que se adapten.</div>
-            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:18}}>
-              {[["bajar_peso","Bajar de peso","↓","Enfoque en déficit calórico y cardio metabólico"],["ganar_musculo","Ganar músculo","↑","Enfoque en hipertrofia y superávit calórico"],["rendimiento","Mejorar rendimiento","⚡","Mix de fuerza, potencia y acondicionamiento"]].map(([v,l,icon,desc])=>{
+        <div onClick={()=>setShowObjetivoModal(false)} style={{position:"fixed",inset:0,background:"rgba(15,23,23,0.36)",zIndex:9999,display:"flex",alignItems:"flex-end",backdropFilter:"blur(3px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:"24px 24px 0 0",boxShadow:"0 -20px 60px rgba(0,0,0,0.18)",padding:"16px 22px 28px",width:"100%",animation:"slideUp .3s ease"}}>
+            <div style={{width:40,height:4,background:T.border,borderRadius:99,margin:"0 auto 16px"}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal}}>Cambiar objetivo</div>
+              <button onClick={()=>setShowObjetivoModal(false)} style={{width:32,height:32,borderRadius:99,background:T.surface,border:`1px solid ${T.border}`,color:T.charcoal,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><TFIcon name="close" size={14}/></button>
+            </div>
+            <div style={{fontSize:13,color:T.textSub,marginBottom:20,lineHeight:1.6}}>Adaptaremos los planes a tu meta.</div>
+            <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:18}}>
+              {[["bajar_peso","Bajar de peso","Déficit suave, comida saciante.","weight",T.sage],["ganar_musculo","Ganar músculo","Superávit calórico + entrenamiento.","dumbbell",T.violet],["rendimiento","Mejorar rendimiento","Nutrición + recuperación.","flame",T.clay]].map(([v,l,desc,ic,c])=>{
                 const active=profile?.objetivo===v;
                 return(
-                  <button key={v} onClick={async()=>{
+                  <div key={v} onClick={async()=>{
                     if(active){setShowObjetivoModal(false);return;}
                     setProfile(p=>({...p,objetivo:v}));
                     await supabase.from("profiles").update({objetivo:v}).eq("id",user.id);
                     setShowObjetivoModal(false);
-                  }} style={{padding:"14px 16px",borderRadius:12,border:`2px solid ${active?T.sage:T.border}`,background:active?T.sage+"14":"transparent",cursor:"pointer",textAlign:"left",display:"flex",gap:12,alignItems:"center",fontFamily:"'DM Sans',sans-serif",transition:"all .25s"}}>
-                    <div style={{width:36,height:36,borderRadius:99,background:active?T.sage:T.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:active?"#fff":T.textMid,transition:"all .25s",flexShrink:0}}>{icon}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:active?600:500,color:active?T.sageD:T.charcoal}}>{l}</div>
-                      <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{desc}</div>
+                  }} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 16px",borderRadius:16,border:`1.5px solid ${active?c:T.border}`,background:active?c+"12":T.card,cursor:"pointer",transition:"all .2s"}}>
+                    <div style={{width:38,height:38,borderRadius:12,background:c+"22",color:c,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <TFIcon name={ic} size={20}/>
                     </div>
-                    {active&&<div style={{width:20,height:20,borderRadius:99,background:T.sage,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0}}>✓</div>}
-                  </button>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:15,fontWeight:600,color:T.charcoal}}>{l}</div>
+                      <div style={{fontSize:12,color:T.textMid,marginTop:2}}>{desc}</div>
+                    </div>
+                    {active&&<TFIcon name="check" size={18} color={c}/>}
+                  </div>
                 );
               })}
             </div>
-            <div style={{background:T.sand+"18",border:`1px solid ${T.sand+"44"}`,borderRadius:12,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"flex-start"}}>
-              <span style={{fontSize:16,flexShrink:0,marginTop:1}}>⚠️</span>
-              <div style={{fontSize:12,color:T.sand,lineHeight:1.6,fontWeight:500}}>Al cambiar tu objetivo, tu menú semanal y plan de entrenamiento podrían no estar alineados. Te recomendamos regenerarlos desde las pestañas <strong>Hábito</strong> y <strong>Entrena</strong>.</div>
-            </div>
-            <button onClick={()=>setShowObjetivoModal(false)} style={{width:"100%",padding:"12px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cerrar</button>
           </div>
         </div>
       )}
       {showNuevoHabito&&(
-        <div onClick={()=>setShowNuevoHabito(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(3px)"}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:16,padding:"28px 24px",maxWidth:340,width:"100%",border:`1px solid ${T.border}`,animation:"modeIn .25s ease",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}}>
-            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:20,fontWeight:600,letterSpacing:"-0.02em",color:T.charcoal,marginBottom:4}}>Nuevo hábito</div>
-            <div style={{fontSize:12,color:T.textSub,marginBottom:16,lineHeight:1.5}}>Crea un hábito diario para marcar y monitorear tu progreso</div>
-            {/* Selector de emoji */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>EMOJI</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                {["🧘","📖","🏃","💪","🥗","😴","🧠","🎯","❤️","⚡","🌱","📱"].map(e=>(
-                  <button key={e} onClick={()=>setNuevoHabitoForm({...nuevoHabitoForm,emoji:e})} style={{fontSize:18,padding:"10px",borderRadius:10,border:`2px solid ${nuevoHabitoForm.emoji===e?T.sage:T.border}`,background:nuevoHabitoForm.emoji===e?T.sage+"18":"transparent",cursor:"pointer",transition:"all .2s"}}>{e}</button>
+        <div onClick={()=>setShowNuevoHabito(false)} style={{position:"fixed",inset:0,background:"rgba(15,23,23,0.36)",zIndex:9999,display:"flex",alignItems:"flex-end",backdropFilter:"blur(3px)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.card,borderRadius:"24px 24px 0 0",boxShadow:"0 -20px 60px rgba(0,0,0,0.18)",padding:"16px 22px 28px",width:"100%",maxHeight:"85vh",overflowY:"auto",animation:"slideUp .3s ease"}}>
+            <div style={{width:40,height:4,background:T.border,borderRadius:99,margin:"0 auto 16px"}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,letterSpacing:"-0.025em",color:T.charcoal}}>Nuevo hábito</div>
+              <button onClick={()=>setShowNuevoHabito(false)} style={{width:32,height:32,borderRadius:99,background:T.surface,border:`1px solid ${T.border}`,color:T.charcoal,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><TFIcon name="close" size={14}/></button>
+            </div>
+            {/* Input */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:6}}>¿Qué quieres construir?</div>
+              <div style={{padding:"12px 14px",borderRadius:12,border:`1.5px solid ${nuevoHabitoForm.nombre?T.sage:T.border}`,background:nuevoHabitoForm.nombre?T.sage+"08":"transparent",display:"flex",alignItems:"center",gap:10,transition:"all .2s"}}>
+                <TFIcon name="sparkles" size={16} color={T.sage}/>
+                <input type="text" value={nuevoHabitoForm.nombre} onChange={e=>setNuevoHabitoForm({...nuevoHabitoForm,nombre:e.target.value})} placeholder="ej: Meditar 10 min al despertar" style={{flex:1,border:"none",background:"transparent",outline:"none",fontSize:15,color:T.charcoal,fontFamily:FONTS.body}} autoFocus/>
+              </div>
+            </div>
+            {/* Sugerencias populares */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:6}}>O elige uno popular</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2, 1fr)",gap:8}}>
+                {[{ic:"water",name:"Beber agua",c:"sky"},{ic:"flame",name:"Ejercicio diario",c:"clay"},{ic:"leaf",name:"Comer verde",c:"sage"},{ic:"sparkles",name:"Meditar",c:"violet"},{ic:"moon",name:"Dormir 8h",c:"violet"},{ic:"chat",name:"Lectura",c:"sand"},{ic:"dumbbell",name:"Pasos diarios",c:"sage"},{ic:"apple",name:"Sin azúcar",c:"clay"}].map(h=>(
+                  <div key={h.name} onClick={()=>setNuevoHabitoForm({...nuevoHabitoForm,nombre:h.name,emoji:h.ic})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,background:T.surface,border:`1px solid ${nuevoHabitoForm.nombre===h.name?T[h.c]:T.border}`,cursor:"pointer",transition:"all .2s"}}>
+                    <div style={{width:28,height:28,borderRadius:8,background:T[h.c]+"22",color:T[h.c],display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <TFIcon name={h.ic} size={14}/>
+                    </div>
+                    <span style={{fontSize:13,color:T.charcoal}}>{h.name}</span>
+                  </div>
                 ))}
               </div>
             </div>
-            {/* Nombre */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>NOMBRE</div>
-              <input type="text" placeholder="ej: Meditar, Correr 5km, Leer..." value={nuevoHabitoForm.nombre} onChange={e=>setNuevoHabitoForm({...nuevoHabitoForm,nombre:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:14,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif",transition:"all .3s"}} autoFocus/>
+            {/* Frecuencia */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:6}}>Frecuencia</div>
+              <div style={{display:"flex",gap:6}}>
+                {["L","M","X","J","V","S","D"].map((d,i)=>{
+                  const a=i<5;
+                  return(
+                    <div key={d} style={{flex:1,height:40,borderRadius:10,background:a?T.charcoal:"transparent",border:`1.5px solid ${a?T.charcoal:T.border}`,color:a?T.bg:T.textMid,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,fontFamily:FONTS.mono,cursor:"pointer"}}>{d}</div>
+                  );
+                })}
+              </div>
             </div>
             {/* Descripción */}
             <div style={{marginBottom:18}}>
-              <div style={{fontSize:11,color:T.textSub,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>DESCRIPCIÓN (opcional)</div>
-              <textarea placeholder="ej: 30 minutos de meditación, intensidad moderada..." value={nuevoHabitoForm.descripcion} onChange={e=>setNuevoHabitoForm({...nuevoHabitoForm,descripcion:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:14,color:T.charcoal,outline:"none",fontFamily:"'DM Sans',sans-serif",resize:"none",height:60,transition:"all .3s"}}/>
+              <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:6}}>Descripción (opcional)</div>
+              <textarea placeholder="ej: 30 minutos, intensidad moderada..." value={nuevoHabitoForm.descripcion} onChange={e=>setNuevoHabitoForm({...nuevoHabitoForm,descripcion:e.target.value})} style={{width:"100%",padding:"10px 12px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,fontSize:14,color:T.charcoal,outline:"none",fontFamily:FONTS.body,resize:"none",height:56}}/>
             </div>
-            <div style={{display:"flex",gap:10}}>
-              <button onClick={()=>setShowNuevoHabito(false)} style={{flex:1,padding:"12px",borderRadius:99,background:T.border,border:"none",color:T.charcoal,cursor:"pointer",fontSize:14,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Cancelar</button>
-              <button onClick={crearHabito} disabled={!nuevoHabitoForm.nombre} style={{flex:1,padding:"12px",borderRadius:99,background:nuevoHabitoForm.nombre?T.sage:T.muted,border:"none",color:"#fff",cursor:nuevoHabitoForm.nombre?"pointer":"not-allowed",fontSize:14,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>Crear</button>
-            </div>
+            <button onClick={crearHabito} disabled={!nuevoHabitoForm.nombre} style={{width:"100%",padding:"14px",borderRadius:99,background:nuevoHabitoForm.nombre?T.sage:T.muted,border:"none",color:"#fff",cursor:nuevoHabitoForm.nombre?"pointer":"not-allowed",fontSize:15,fontWeight:600,fontFamily:FONTS.body}}>Crear hábito</button>
           </div>
+          <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
         </div>
       )}
     </div>
