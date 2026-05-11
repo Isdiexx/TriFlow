@@ -640,9 +640,6 @@ export default function App(){
             <div style={{paddingBottom:16}} className="mode-in">
               {/* Header */}
               <div style={{padding:"8px 22px 14px",background:T.bg,flexShrink:0}}>
-                <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,textTransform:"uppercase",letterSpacing:"0.12em",color:T.sage,marginBottom:6}}>
-                  {new Date().toLocaleDateString('es-CL',{weekday:'long'}).toUpperCase()} · {new Date().getDate()} {new Date().toLocaleDateString('es-CL',{month:'long'}).toUpperCase()}
-                </div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:12}}>
                   <div>
                     <div style={{fontFamily:FONTS.display,fontSize:28,fontWeight:600,color:T.charcoal,letterSpacing:"-0.03em",lineHeight:1.05}}>
@@ -673,7 +670,7 @@ export default function App(){
                           <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:FONTS.display,fontSize:18,fontWeight:600,color:T.charcoal}}>{pctHoy}%</div>
                         </div>
                         <div style={{flex:1}}>
-                          <div style={{fontSize:12,color:T.textSub,fontFamily:FONTS.mono,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Día de hoy</div>
+                          <div style={{fontSize:12,color:T.textSub,fontFamily:FONTS.mono,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Día de hoy · {new Date().getDate()} {new Date().toLocaleDateString('es-CL',{month:'short'})}</div>
                           <div style={{fontFamily:FONTS.display,fontSize:22,fontWeight:600,letterSpacing:"-0.025em",lineHeight:1.1,color:T.charcoal}}>{completadasHoy3} de {totalHab3} hábitos</div>
                           <div style={{fontSize:13,color:T.textMid,marginTop:4}}>Te faltan {totalHab3-completadasHoy3}. Tu mejor racha: {racha3} días.</div>
                         </div>
@@ -761,6 +758,7 @@ export default function App(){
                       })}
                     </div>
                     {/* Racha + progreso semanal compacto */}
+                    <div style={{height:10}}/>
                     {(()=>{
                       const totalSem=Object.values(completadasSem).reduce((a,v)=>a+v,0);
                       const maxPosible=habitos.length*7;
