@@ -66,7 +66,7 @@ const Avatar=({name,size=40,T})=><div style={{width:size,height:size,borderRadiu
 
 function ThemeToggle({dark,toggle,T}){
   return(<button onClick={toggle} style={{width:52,height:28,borderRadius:99,border:"none",cursor:"pointer",background:dark?T.sage:T.border2,padding:3,display:"flex",alignItems:"center",justifyContent:dark?"flex-end":"flex-start",transition:"all .35s"}}>
-    <div style={{width:22,height:22,borderRadius:99,background:dark?"#fff":T.surface,boxShadow:"0 1px 4px rgba(0,0,0,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,transition:"all .35s"}}>{dark?"🌙":"☀️"}</div>
+    <div style={{width:22,height:22,borderRadius:99,background:dark?"#1a2e1a":T.surface,boxShadow:"0 1px 4px rgba(0,0,0,.15)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .35s"}}><TFIcon name={dark?"moon":"sun"} size={13} color={dark?"#fff":T.sand}/></div>
   </button>);
 }
 
@@ -772,7 +772,7 @@ export default function App(){
                         <div style={{display:"flex",gap:10}}>
                           {/* Racha */}
                           <div style={{flex:1,background:racha>=3?T.sage+"14":T.card,borderRadius:14,padding:"14px",border:`1px solid ${racha>=3?T.sage+"33":T.border}`,display:"flex",alignItems:"center",gap:12}}>
-                            <div style={{fontSize:28,flexShrink:0}}>{racha>=7?"🔥":racha>=3?"⚡":"✨"}</div>
+                            <div style={{width:36,height:36,borderRadius:10,background:racha>=7?T.clay+"22":racha>=3?T.sage+"22":T.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><TFIcon name={racha>=7?"flame":racha>=3?"sparkles":"target"} size={20} color={racha>=7?T.clay:racha>=3?T.sage:T.textSub}/></div>
                             <div>
                               <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:700,letterSpacing:"-0.03em",color:racha>=3?T.sage:T.charcoal,lineHeight:1}}>{racha}</div>
                               <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{racha===1?"día de racha":"días de racha"}</div>
@@ -947,8 +947,8 @@ export default function App(){
                 lunesSemana.setDate(hoy.getDate()-(domActual===0?6:domActual-1));
                 const domingoSemana=new Date(lunesSemana);
                 domingoSemana.setDate(lunesSemana.getDate()+6);
-                const fechaLunes=lunesSemana.toLocaleDateString("en-CA");
-                const fechaDomingo=domingoSemana.toLocaleDateString("en-CA");
+                const fechaLunes=lunesSemana.toLocaleDateString("es-CL",{day:"numeric",month:"short"});
+                const fechaDomingo=domingoSemana.toLocaleDateString("es-CL",{day:"numeric",month:"short"});
                 // Sessions this week
                 const sesionesSem=sesiones.filter(s=>s.completada).length;
                 const totalSesiones=sesiones.length||1;
@@ -987,13 +987,13 @@ export default function App(){
                     {/* Metrics grid */}
                     <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:10}}>
                       {[
-                        {label:"Sesiones",value:sesionesSem,total:`/${totalSesiones}`,icon:"💪",color:T.sage},
-                        {label:"Agua",value:Math.round(waterWeekly),total:"/56 vasos",icon:"💧",color:T.sky},
-                        {label:"Menús",value:diasConMenu,total:"/7 días",icon:"🥗",color:T.sand},
-                        {label:"Hábitos",value:habitosSemana,total:`/${totalHabitosWeek}`,icon:"✦",color:T.violet},
+                        {label:"Sesiones",value:sesionesSem,total:`/${totalSesiones}`,icon:"dumbbell",color:T.sage},
+                        {label:"Agua",value:Math.round(waterWeekly),total:"/56 vasos",icon:"water",color:T.sky},
+                        {label:"Menús",value:diasConMenu,total:"/7 días",icon:"leaf",color:T.sand},
+                        {label:"Hábitos",value:habitosSemana,total:`/${totalHabitosWeek}`,icon:"sparkles",color:T.violet},
                       ].map((m,i)=>(
                         <div key={i} style={{background:T.card,borderRadius:12,padding:"11px 12px",border:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10}}>
-                          <div style={{fontSize:20}}>{m.icon}</div>
+                          <div style={{width:32,height:32,borderRadius:8,background:m.color+"18",display:"flex",alignItems:"center",justifyContent:"center"}}><TFIcon name={m.icon} size={17} color={m.color}/></div>
                           <div style={{flex:1}}>
                             <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.03em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>{m.label}</div>
                             <div style={{display:"flex",alignItems:"baseline",gap:4}}>
@@ -1006,7 +1006,7 @@ export default function App(){
                     </div>
                     {/* Weight change badge */}
                     <div style={{background:pesoChange<0?T.sage+"18":T.clay+"18",borderRadius:12,padding:"11px 12px",border:`1px solid ${pesoChange<0?T.sage+"44":T.clay+"44"}`,display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                      <div style={{fontSize:20}}>{pesoChange<0?"📉":"📈"}</div>
+                      <div style={{width:32,height:32,borderRadius:8,background:(pesoChange<0?T.sage:T.clay)+"18",display:"flex",alignItems:"center",justifyContent:"center"}}><TFIcon name="weight" size={17} color={pesoChange<0?T.sage:T.clay}/></div>
                       <div style={{flex:1}}>
                         <div style={{fontSize:10,color:T.textSub,letterSpacing:"0.03em",fontFamily:"'JetBrains Mono',monospace",marginBottom:2}}>PESO</div>
                         <div style={{display:"flex",alignItems:"baseline",gap:4}}>
@@ -1051,19 +1051,19 @@ export default function App(){
                         </div>
                         {adherenciaGeneral>=80&&(
                           <div style={{background:T.sage+"22",borderRadius:10,padding:"10px 12px",border:`1px solid ${T.sage}44`}}>
-                            <div style={{fontSize:12,color:T.sage,fontWeight:600}}>🎉 ¡Excelente semana!</div>
+                            <div style={{fontSize:12,color:T.sage,fontWeight:600,display:"flex",alignItems:"center",gap:6}}><TFIcon name="sparkles" size={14} color={T.sage}/>¡Excelente semana!</div>
                             <div style={{fontSize:11,color:T.sageD,marginTop:2}}>Tu consistencia está en el camino correcto. Mantén el ritmo.</div>
                           </div>
                         )}
                         {adherenciaGeneral>=50&&adherenciaGeneral<80&&(
                           <div style={{background:T.sand+"22",borderRadius:10,padding:"10px 12px",border:`1px solid ${T.sand}44`}}>
-                            <div style={{fontSize:12,color:T.sand,fontWeight:600}}>💪 Buen desempeño</div>
+                            <div style={{fontSize:12,color:T.sand,fontWeight:600,display:"flex",alignItems:"center",gap:6}}><TFIcon name="dumbbell" size={14} color={T.sand}/>Buen desempeño</div>
                             <div style={{fontSize:11,color:T.sand,marginTop:2}}>Puedes mejorar un poco más. Enfócate en lo que se te hace difícil.</div>
                           </div>
                         )}
                         {adherenciaGeneral<50&&(
                           <div style={{background:T.clay+"22",borderRadius:10,padding:"10px 12px",border:`1px solid ${T.clay}44`}}>
-                            <div style={{fontSize:12,color:T.clay,fontWeight:600}}>📊 Oportunidad de mejora</div>
+                            <div style={{fontSize:12,color:T.clay,fontWeight:600,display:"flex",alignItems:"center",gap:6}}><TFIcon name="target" size={14} color={T.clay}/>Oportunidad de mejora</div>
                             <div style={{fontSize:11,color:T.clay,marginTop:2}}>Pequeños pasos consistentes te llevarán a donde quieres estar.</div>
                           </div>
                         )}
@@ -1086,7 +1086,7 @@ export default function App(){
                         <button key={i} onClick={()=>updateAgua(Math.min(8,i+1))} style={{width:18,height:18,borderRadius:99,background:i<agua?T.sky:T.border,border:"none",cursor:"pointer",transition:"background .2s",padding:0}}/>
                       ))}
                     </div>
-                    <div style={{fontSize:11,color:T.textSub,marginTop:5}}>{agua}/8 vasos · {agua>=8?"¡Meta cumplida! 🎉":agua>=5?"Casi llegamos":"Sigue hidratándote"}</div>
+                    <div style={{fontSize:11,color:T.textSub,marginTop:5}}>{agua}/8 vasos · {agua>=8?"¡Meta cumplida!":agua>=5?"Casi llegamos":"Sigue hidratándote"}</div>
                   </div>
                 </div>
 
@@ -1104,20 +1104,20 @@ export default function App(){
                       </div>
                       <button onClick={()=>setTab("habito")} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.sage,fontFamily:"'DM Sans',sans-serif"}}>Ver todo →</button>
                     </div>
-                    {[["🌅",menuHoy.desayuno,"desayuno"],["☀️",menuHoy.almuerzo,"almuerzo"],["🍎",menuHoy.snack,"snack"],["🌙",menuHoy.cena,"cena"]].filter(([,v])=>v).map(([emoji,texto,comidaKey],i,arr)=>{
+                    {[["sun",menuHoy.desayuno,"desayuno"],["leaf",menuHoy.almuerzo,"almuerzo"],["apple",menuHoy.snack,"snack"],["moon",menuHoy.cena,"cena"]].filter(([,v])=>v).map(([iconName,texto,comidaKey],i,arr)=>{
                       const done=menuTracking.find(tr=>tr.fecha===hoyFecha&&tr.comida===comidaKey)?.completada;
                       return(
                       <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",borderBottom:i<arr.length-1?`1px solid ${T.border}`:"none",opacity:done?.6:1}}>
-                        <span style={{fontSize:14,marginTop:1}}>{emoji}</span>
+                        <div style={{width:28,height:28,borderRadius:7,background:T.sage+"14",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><TFIcon name={iconName} size={15} color={T.sage}/></div>
                         <div style={{fontSize:14,color:done?T.textMid:T.charcoal,flex:1,lineHeight:1.35,textDecoration:done?"line-through":"none"}}>{texto}</div>
-                        {done&&<span style={{fontSize:10,color:T.sage,marginTop:2}}>✓</span>}
+                        {done&&<TFIcon name="check" size={14} color={T.sage}/>}
                       </div>
                     );})}
                   </div>
                 );})():(
                   <div style={{background:T.sage+"14",borderRadius:16,padding:"16px 18px",border:`1px solid ${T.sage}22`,textAlign:"center"}}>
                     <div style={{fontSize:14,color:T.sageD,marginBottom:8}}>No hay menú generado aún</div>
-                    <button onClick={()=>setTab("habito")} style={{padding:"8px 18px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Generar menú ✦</button>
+                    <button onClick={()=>setTab("habito")} style={{padding:"8px 18px",borderRadius:99,background:T.sage,border:"none",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:6,margin:"0 auto"}}><TFIcon name="sparkles" size={14} color="#fff"/>Generar menú</button>
                   </div>
                 )}
 
@@ -1125,7 +1125,7 @@ export default function App(){
                 {stockCritico.length>0&&(
                   <div style={{background:dark?T.clay+"18":`linear-gradient(135deg,${T.sand}18,${T.clay}10)`,borderRadius:16,padding:"16px",border:`1px solid ${T.clay}33`,transition:"all .4s"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                      <div style={{fontSize:11,color:T.sand,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>⚠ DESPENSA</div>
+                      <div style={{fontSize:11,color:T.sand,letterSpacing:"0.04em",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,display:"flex",alignItems:"center",gap:5}}><TFIcon name="bell" size={13} color={T.sand}/>DESPENSA</div>
                       <button onClick={()=>{setTab("despensa");setDespensaTab("compras");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:T.clay,fontFamily:"'DM Sans',sans-serif"}}>Ver lista →</button>
                     </div>
                     <div style={{fontSize:14,color:T.charcoal,marginBottom:8}}>Faltan <strong>{stockCritico.length} productos</strong> para tu menú.</div>
@@ -1137,7 +1137,7 @@ export default function App(){
                 <div style={{background:dark?T.sage+"18":`linear-gradient(135deg,${T.sage}20,${T.sage}08)`,borderRadius:16,padding:"16px 18px",border:`1px solid ${T.sage}33`,transition:"all .4s"}}>
                   <div style={{fontFamily:"'Playfair Display',serif",fontSize:14,fontStyle:"italic",color:T.sageD,marginBottom:6}}>"La constancia es el hábito más valioso."</div>
                   <div style={{fontSize:14,color:T.textMid,lineHeight:1.65,marginBottom:10}}>
-                    <strong style={{color:T.charcoal}}>{sesiones.filter(s=>s.completada).length}/{sesiones.length}</strong> sesiones completadas · <strong style={{color:T.charcoal}}>💧 {agua}/8</strong> vasos hoy
+                    <strong style={{color:T.charcoal}}>{sesiones.filter(s=>s.completada).length}/{sesiones.length}</strong> sesiones completadas · <strong style={{color:T.charcoal}}><TFIcon name="water" size={13} color={T.sky} style={{verticalAlign:"text-bottom"}}/> {agua}/8</strong> vasos hoy
                   </div>
                   <button onClick={()=>setTab("asistente")} style={{background:"none",border:`1.5px solid ${T.sage}`,borderRadius:99,padding:"8px 16px",cursor:"pointer",fontSize:14,color:T.sageD,fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Hablar con mi asistente →</button>
                 </div>
