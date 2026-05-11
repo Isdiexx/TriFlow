@@ -554,7 +554,7 @@ export default function App(){
         <div style={{position:"relative",marginBottom:20}}><input type={showPass?"text":"password"} placeholder="Contraseña" value={pass} onChange={e=>setPass(e.target.value)} style={inp({marginBottom:0,paddingRight:40})}/><button onClick={()=>setShowPass(!showPass)} style={{position:"absolute",right:12,top:12,background:"none",border:"none",cursor:"pointer",fontSize:16,color:T.textSub}}>{showPass?"👁️":"👁️‍🗨️"}</button></div>
         {modo==="login"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20,fontSize:14}}><input type="checkbox" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)} style={{cursor:"pointer"}}/><label style={{cursor:"pointer",color:T.textMid}}>Recordar usuario</label></div>}
         <button onClick={handleAuth} disabled={loading||!email||!pass} style={btn(email&&pass&&!loading?T.sage:T.muted)}>{loading?"Cargando...":modo==="login"?"Iniciar sesión":"Crear cuenta"}</button>
-        {modo==="registro"&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:14,justifyContent:"center"}}><TFIcon name="lock" size={12} color={T.textSub}/><span style={{fontSize:11,color:T.textSub,fontFamily:FONTS.mono}}>Tu data nunca se vende ni se comparte.</span></div>}
+        {modo==="registro"&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:14,justifyContent:"center"}}><TFIcon name="lock" size={12} color={T.textSub}/><span style={{fontSize:11,color:T.textSub,fontFamily:FONTS.mono}}>Tu data nunca se vende. Solo se comparte con profesionales que tú autorices.</span></div>}
 
         {/* OAuth Buttons */}
         {modo==="login"&&(
@@ -2013,10 +2013,8 @@ export default function App(){
                 const active=profile?.objetivo===v;
                 return(
                   <div key={v} onClick={async()=>{
-                    if(active){setShowObjetivoModal(false);return;}
                     setProfile(p=>({...p,objetivo:v}));
                     await supabase.from("profiles").update({objetivo:v}).eq("id",user.id);
-                    setShowObjetivoModal(false);
                   }} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 16px",borderRadius:16,border:`1.5px solid ${active?c:T.border}`,background:active?c+"12":T.card,cursor:"pointer",transition:"all .2s"}}>
                     <div style={{width:38,height:38,borderRadius:12,background:c+"22",color:c,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                       <TFIcon name={ic} size={20}/>
@@ -2030,6 +2028,22 @@ export default function App(){
                 );
               })}
             </div>
+            {/* Peso meta */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontFamily:FONTS.mono,fontSize:10,fontWeight:500,letterSpacing:"0.14em",color:T.textSub,textTransform:"uppercase",marginBottom:8}}>Peso meta</div>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{flex:1,display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface}}>
+                  <TFIcon name="target" size={16} color={T.sage}/>
+                  <input type="number" value={profile?.peso_meta||""} onChange={e=>setProfile(p=>({...p,peso_meta:e.target.value}))} onBlur={async e=>{const v=parseFloat(e.target.value);if(v>0)await supabase.from("profiles").update({peso_meta:v}).eq("id",user.id);}} placeholder="ej: 70" style={{flex:1,border:"none",background:"transparent",outline:"none",fontSize:18,fontWeight:600,color:T.charcoal,fontFamily:FONTS.display,letterSpacing:"-0.02em"}}/>
+                  <span style={{fontSize:14,color:T.textSub,fontWeight:500}}>kg</span>
+                </div>
+                <div style={{textAlign:"center",padding:"8px 0"}}>
+                  <div style={{fontSize:11,color:T.textSub}}>Actual</div>
+                  <div style={{fontFamily:FONTS.display,fontSize:18,fontWeight:600,color:T.charcoal}}>{profile?.peso_actual||"—"}<span style={{fontSize:12,color:T.textSub,fontWeight:400}}> kg</span></div>
+                </div>
+              </div>
+            </div>
+            <button onClick={()=>setShowObjetivoModal(false)} style={{width:"100%",padding:"14px",borderRadius:99,background:T.sage,border:"none",color:"#fff",cursor:"pointer",fontSize:15,fontWeight:600,fontFamily:FONTS.body}}>Guardar</button>
           </div>
         </div>
       )}
@@ -2257,7 +2271,7 @@ export default function App(){
             </div>
             <div style={{background:T.sage+"12",borderRadius:12,padding:"12px 14px",marginBottom:18,display:"flex",alignItems:"flex-start",gap:10}}>
               <TFIcon name="lock" size={15} color={T.sage} style={{marginTop:1,flexShrink:0}}/>
-              <div style={{fontSize:12,color:T.textMid,lineHeight:1.5}}>Tu data nunca se vende ni se comparte con terceros. Cifrada de extremo a extremo.</div>
+              <div style={{fontSize:12,color:T.textMid,lineHeight:1.5}}>Tu data nunca se vende. Solo se comparte con profesionales de salud que tú autorices. Cifrada de extremo a extremo.</div>
             </div>
             <button onClick={()=>setShowPrivacidadModal(false)} style={{width:"100%",padding:"14px",borderRadius:99,background:T.sage,border:"none",color:"#fff",cursor:"pointer",fontSize:15,fontWeight:600,fontFamily:FONTS.body}}>Guardar</button>
           </div>
