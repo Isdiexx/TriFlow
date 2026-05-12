@@ -193,7 +193,7 @@ export default function App(){
   const[ob,setOb]=useState({nombre:"",apellido:"",peso_actual:"",peso_meta:"",objetivo:"bajar_peso",restricciones:[],pais:"Chile",dias_entrenamiento:3});
   const[agua,setAgua]=useState(0);const[stock,setStock]=useState([]);const[menu,setMenu]=useState([]);const[sesiones,setSesiones]=useState([]);const[listaCompra,setListaCompra]=useState([]);
   const[historialPeso,setHistorialPeso]=useState([]);const[showPesoInput,setShowPesoInput]=useState(false);const[nuevoPesoVal,setNuevoPesoVal]=useState("");const[showPesoDetalle,setShowPesoDetalle]=useState(false);const[pesoRango,setPesoRango]=useState("all");const[showPesoPage,setShowPesoPage]=useState(false);
-  const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);const[reponerItem,setReponerItem]=useState(null);const[reponerCant,setReponerCant]=useState("");
+  const[nuevoProducto,setNuevoProducto]=useState({nombre:"",cantidad:"",unidad:"g"});const[mostrarForm,setMostrarForm]=useState(false);const[reponerItem,setReponerItem]=useState(null);const[reponerCant,setReponerCant]=useState("");const[editandoStock,setEditandoStock]=useState(null);const[editandoNombre,setEditandoNombre]=useState("");
   const[diaMenu,setDiaMenu]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});const[despensaTab,setDespensaTab]=useState("stock");const[semanaActiva,setSemanaActiva]=useState(1);
   const[boletaImg,setBoletaImg]=useState(null);const[boletaProducts,setBoletaProducts]=useState([]);const[boletaLoading,setBoletaLoading]=useState(false);const[boletaError,setBoletaError]=useState("");
   const[msgs,setMsgs]=useState([]);const[chatInput,setChatInput]=useState("");const[chatLoading,setChatLoading]=useState(false);
@@ -1342,9 +1342,14 @@ export default function App(){
                           <TFIcon name="apple" size={18}/>
                         </div>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>{s.nombre}</div>
+                          {editandoStock===s.id?(
+                            <input autoFocus value={editandoNombre} onChange={e=>setEditandoNombre(e.target.value)} onBlur={async()=>{if(editandoNombre.trim()&&editandoNombre!==s.nombre){await supabase.from("stock").update({nombre:editandoNombre.trim()}).eq("id",s.id);setStock(p=>p.map(x=>x.id===s.id?{...x,nombre:editandoNombre.trim()}:x));}setEditandoStock(null);}} onKeyDown={async e=>{if(e.key==="Enter"){e.target.blur();}else if(e.key==="Escape"){setEditandoStock(null);}}} style={{width:"100%",border:"none",borderBottom:`1.5px solid ${T.sage}`,background:"transparent",outline:"none",fontSize:14,color:T.charcoal,fontWeight:500,fontFamily:FONTS.body,padding:"2px 0"}}/>
+                          ):(
+                            <div style={{fontSize:14,fontWeight:500,color:T.charcoal}}>{s.nombre}</div>
+                          )}
                           <div style={{fontSize:11,color:T.textSub,marginTop:2}}>{s.cantidad} {s.unidad}</div>
                         </div>
+                        <button onClick={()=>{setEditandoStock(editandoStock===s.id?null:s.id);setEditandoNombre(s.nombre);}} style={{background:"none",border:"none",cursor:"pointer",color:T.textSub,padding:0,display:"flex"}}><TFIcon name="edit" size={14}/></button>
                         {lowStock?(
                           <button onClick={()=>{setReponerItem(reponerItem===s.id?null:s.id);setReponerCant("");}} style={{padding:"4px 10px",borderRadius:99,background:T.clay+"22",color:T.clay,fontSize:11,fontWeight:600,border:"none",cursor:"pointer",fontFamily:FONTS.body}}>Reponer</button>
                         ):(
@@ -1452,19 +1457,33 @@ export default function App(){
                         <div style={{fontFamily:FONTS.display,fontSize:18,fontWeight:600,color:T.charcoal}}>{boletaProducts.length} productos encontrados</div>
                         <button onClick={()=>{setBoletaProducts([]);setBoletaImg(null);setBoletaError("");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.textSub,fontFamily:FONTS.body}}>✕ Limpiar</button>
                       </div>
-                      <div style={{fontSize:12,color:T.textSub,marginBottom:12}}>Desmarca los que no quieras agregar</div>
+                      <div style={{fontSize:12,color:T.textSub,marginBottom:12}}>Desmarca los que no quieras. Toca el nombre para editarlo.</div>
                       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
-                        {boletaProducts.map((p,i)=>(
-                          <div key={i} style={{background:T.card,borderRadius:12,padding:"12px 14px",border:`1px solid ${p.checked?T.sage+"44":T.border}`,display:"flex",alignItems:"center",gap:10,opacity:p.checked?1:0.5,transition:"all .2s",cursor:"pointer"}} onClick={()=>setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,checked:!x.checked}:x))}>
-                            <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${p.checked?T.sage:T.muted}`,background:p.checked?T.sage:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                              {p.checked&&<span style={{color:"#fff",fontSize:12,fontWeight:700}}>✓</span>}
+                        {boletaProducts.map((p,i)=>{
+                          const dup=stock.find(s=>(s.nombre||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim()===(p.nombre||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim());
+                          return(
+                          <div key={i} style={{background:T.card,borderRadius:12,padding:"12px 14px",border:`1px solid ${dup?T.sky+"66":p.checked?T.sage+"44":T.border}`,display:"flex",alignItems:"center",gap:10,opacity:p.checked?1:0.5,transition:"all .2s"}}>
+                            <div onClick={()=>setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,checked:!x.checked}:x))} style={{width:20,height:20,borderRadius:6,border:`2px solid ${p.checked?T.sage:T.muted}`,background:p.checked?T.sage:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
+                              {p.checked&&<TFIcon name="check" size={12} color="#fff"/>}
                             </div>
                             <div style={{flex:1}}>
-                              <div style={{fontSize:14,color:T.charcoal,fontWeight:500}}>{p.nombre}</div>
-                              <div style={{fontSize:11,color:T.textSub,marginTop:1}}>{p.cantidad} {p.unidad}</div>
+                              {p._editing?(
+                                <input autoFocus value={p.nombre} onChange={e=>setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,nombre:e.target.value}:x))} onBlur={()=>setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,_editing:false}:x))} onKeyDown={e=>{if(e.key==="Enter")setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,_editing:false}:x));}} style={{width:"100%",border:"none",borderBottom:`1.5px solid ${T.sage}`,background:"transparent",outline:"none",fontSize:14,color:T.charcoal,fontWeight:500,fontFamily:FONTS.body,padding:"2px 0"}}/>
+                              ):(
+                                <div onClick={()=>setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,_editing:true}:x))} style={{fontSize:14,color:T.charcoal,fontWeight:500,cursor:"pointer"}}>{p.nombre}</div>
+                              )}
+                              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+                                <span style={{fontSize:11,color:T.textSub}}>{p.cantidad} {p.unidad}</span>
+                                {dup&&<span style={{fontSize:10,color:T.sky,fontWeight:600,background:T.sky+"18",padding:"1px 6px",borderRadius:99}}>Se sumará a existente</span>}
+                              </div>
                             </div>
+                            <button onClick={()=>setBoletaProducts(prev=>prev.map((x,j)=>j===i?{...x,_editing:true}:x))} style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",color:T.textSub}}><TFIcon name="edit" size={14}/></button>
                           </div>
-                        ))}
+                        );})}
+                      </div>
+                      <div style={{background:T.sky+"12",borderRadius:10,padding:"10px 12px",marginBottom:12,display:"flex",alignItems:"flex-start",gap:8}}>
+                        <TFIcon name="sparkles" size={14} color={T.sky} style={{marginTop:1,flexShrink:0}}/>
+                        <div style={{fontSize:11,color:T.textMid,lineHeight:1.5}}>Los productos que ya existen en tu despensa se sumarán automáticamente en vez de duplicarse.</div>
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <button onClick={()=>{setBoletaProducts([]);setBoletaImg(null);}} style={btn(T.muted,{flex:1})}>Cancelar</button>
